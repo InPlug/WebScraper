@@ -1,0 +1,10 @@
+JohnsHopkinsUrl = "https://coronavirus.jhu.edu/map.html";
+	direkt als inner Frame: https://www.arcgis.com/apps/opsdashboard/index.html#/bda7594740fd40299423467b48e9ecf6
+	Johns Hopkins Quelle für Deutschland: https://interaktiv.morgenpost.de/corona-virus-karte-infektionen-deutschland-weltweit/
+
+RKI übergeordnete Url: https://npgeo-corona-npgeo-de.hub.arcgis.com/
+	RKIUrl = "https://experience.arcgis.com/experience/478220a4c454480e823b17327b2bf1d4/page/page_1";
+	
+	https://www.rki.de/DE/Content/InfAZ/N/Neuartiges_Coronavirus/Situationsberichte/Nov_2020/Archiv_November.html
+	
+	

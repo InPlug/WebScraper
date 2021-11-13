@@ -1,0 +1,48 @@
+C:\Users\micro\Documents\private4\WPF\Eti\VishnuHome\Tests\TestJobs\CheckSpecials\Plugin
+
+System.InvalidOperationException: "session not created: This version of ChromeDriver only supports Chrome version 87
+Current browser version is 89.0.4389.72 with binary path C:\Program Files (x86)\Google\Chrome\Application\chrome.exe (SessionNotCreated)"
+Lösung: Pakete für aktuelle Projektmappe verwalten / Selenium.WebDriver.ChromeDriver auf neueste Version aktualisieren
+Stehengebliebene Prozesse löschen mit "removeChromedriverProcesses.bat".
+
+System.ArgumentException
+  HResult=0x80070057
+  Nachricht = Der Pfad hat ein ungültiges Format.
+  Quelle = mscorlib
+  Stapelüberwachung:
+   at System.IO.Path.NormalizePath(String path, Boolean fullCheck, Int32 maxPathLength, Boolean expandShortPaths)
+   at System.IO.Path.InternalGetDirectoryName(String path)
+   at OpenQA.Selenium.Internal.FileUtilities.GetCurrentDirectory()
+   at OpenQA.Selenium.Internal.ResourceUtilities.GetResourceStream(String fileName, String resourceId)
+   at OpenQA.Selenium.Remote.RemoteWebElement.GetAtom(String atomResourceName)
+   at OpenQA.Selenium.Remote.RemoteWebElement.get_Displayed()
+   at OpenQA.Selenium.Support.UI.ExpectedConditions.<>c__DisplayClass7_0.<ElementIsVisible>b__0(IWebDriver driver)
+   at OpenQA.Selenium.Support.UI.DefaultWait`1.Until[TResult](Func`2 condition)
+   at NetEti.WebTools.WebScraperBase.WaitForStableWebElement(By locator, LocatorCondition condition) in C:\Users\micro\Documents\private4\WPF\Eti\InPlug\CheckCovid19\CheckCovid19\CheckCovid19\WebScraperBase.cs:line 106
+
+  Diese Ausnahme wurde ursprünglich von dieser Aufrufliste ausgelöst:
+    [Externer Code]
+    NetEti.WebTools.WebScraperBase.WaitForStableWebElement(OpenQA.Selenium.By, NetEti.WebTools.LocatorCondition) in WebScraperBase.cs
+
+
+"The path is not of a legal form"
+
+System.ArgumentException
+  HResult=0x80070057
+  Nachricht = Der Pfad hat ein ungültiges Format.
+  Quelle = mscorlib
+  Stapelüberwachung:
+   at System.IO.Path.NormalizePath(String path, Boolean fullCheck, Int32 maxPathLength, Boolean expandShortPaths)
+   at System.IO.Path.InternalGetDirectoryName(String path)
+   at OpenQA.Selenium.Internal.FileUtilities.GetCurrentDirectory()
+   at OpenQA.Selenium.Internal.ResourceUtilities.GetResourceStream(String fileName, String resourceId)
+   at OpenQA.Selenium.Remote.RemoteWebElement.GetAtom(String atomResourceName)
+   at OpenQA.Selenium.Remote.RemoteWebElement.get_Displayed()
+   at OpenQA.Selenium.Support.UI.ExpectedConditions.<>c__DisplayClass7_0.<ElementIsVisible>b__0(IWebDriver driver)
+   at OpenQA.Selenium.Support.UI.DefaultWait`1.Until[TResult](Func`2 condition)
+   at NetEti.WebTools.WebScraperBase.WaitForStableWebElement(By locator, LocatorCondition condition) in C:\Users\micro\Documents\private4\WPF\Eti\InPlug\CheckCovid19\CheckCovid19\CheckCovid19\WebScraperBase.cs:line 106
+
+  Diese Ausnahme wurde ursprünglich von dieser Aufrufliste ausgelöst:
+    [Externer Code]
+    NetEti.WebTools.WebScraperBase.WaitForStableWebElement(OpenQA.Selenium.By, NetEti.WebTools.LocatorCondition) in WebScraperBase.cs
+
