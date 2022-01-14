@@ -1,5 +1,7 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
+using System.Threading.Tasks;
 using OpenQA.Selenium.Chrome;
 
 namespace NetEti.WebTools
@@ -28,15 +30,32 @@ namespace NetEti.WebTools
         /// Constructor - takes a website url and starts the WebDriver at the given driverPath.
         /// </summary>
         /// <param name="url">The complete website url including https, etc.</param>
-        /// <param name="driverPath">The full path to the webdriver.</param>
-        public ChromeScraper(string url, string driverPath) : base(url, driverPath) { }
+        /// <param name="driverPath">Webdriver's containing directory.</param>
+        public ChromeScraper(string url, string driverPath) : this(url, driverPath, 60) { }
 
         /// <summary>
-        /// Instantiates the concrete Driver (ChromeDriver here).
+        /// Constructor - takes a website url and starts the WebDriver at the given driverPath.
         /// </summary>
-        /// <param name="driverPath">The full path to the webdriver.</param>
-        protected override void SetupDriverInstance(string driverPath)
+        /// <param name="url">The complete website url including https, etc.</param>
+        /// <param name="driverPath">Webdriver's containing directory.</param>
+        /// <param name="timeout">Webdriver search-for-stable-element-timeout, default = 60 (seconds).</param>
+        public ChromeScraper(string url, string driverPath, int timeout) : base(url, driverPath, timeout) { }
+
+        /// <summary>
+        /// Instantiates the concrete Driver (chromedriver.exe here).
+        /// </summary>
+        /// <param name="driverPath">Webdriver's containing directory.</param>
+        protected override async Task SetupDriverInstance(string driverPath)
         {
+            ChromeDriverInstaller chromeDriverInstaller = new ChromeDriverInstaller();
+
+            // not necessary, but added for logging purposes
+            var chromeVersion = await chromeDriverInstaller.GetChromeVersion();
+            // Console.WriteLine($"Chrome version {chromeVersion} detected");
+
+            await chromeDriverInstaller.Install(chromeVersion, driverPath);
+            // Console.WriteLine("ChromeDriver installed");
+
             ChromeDriverService service = ChromeDriverService.CreateDefaultService(driverPath);
             service.SuppressInitialDiagnosticInformation = true;
             service.HideCommandPromptWindow = true;

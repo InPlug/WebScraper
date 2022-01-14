@@ -1,8 +1,8 @@
 ﻿using GetDynamicWebsiteContent;
 using OpenQA.Selenium;
-using OpenQA.Selenium.Chrome;
 using OpenQA.Selenium.Support.UI;
 using System;
+using System.Threading.Tasks;
 
 namespace NetEti.WebTools
 {
@@ -36,10 +36,18 @@ namespace NetEti.WebTools
         /// Constructor - takes a website url and starts the WebDriver.
         /// </summary>
         /// <param name="url">The complete website url including https, etc.</param>
-        /// <param name="driverPath">The full path to the webdriver.</param>
-        public WebScraperBase(string url, string driverPath)
+        /// <param name="driverPath">Webdriver's containing directory.</param>
+        public WebScraperBase(string url, string driverPath) : this(url, driverPath, 60) { }
+
+        /// <summary>
+        /// Constructor - takes a website url and starts the WebDriver.
+        /// </summary>
+        /// <param name="url">The complete website url including https, etc.</param>
+        /// <param name="driverPath">Webdriver's containing directory.</param>
+        /// <param name="timeout">Webdriver search-for-stable-element-timeout, default = 60 (seconds).</param>
+        public WebScraperBase(string url, string driverPath, int timeout)
         {
-            this.SetupDriver(url, driverPath);
+            this.SetupDriver(url, driverPath, timeout);
         }
 
         /// <summary>
@@ -51,8 +59,8 @@ namespace NetEti.WebTools
         /// Instantiates the concrete Driver (e.g. ChromeDriver), DefaultWait and FluentWait.
         /// Must be overwritten.
         /// </summary>
-        /// <param name="driverPath">The full path to the webdriver.</param>
-        protected abstract void SetupDriverInstance(string driverPath);
+        /// <param name="driverPath">Webdriver's containing directory.</param>
+        protected abstract Task SetupDriverInstance(string driverPath);
 
         /// <summary>
         /// Sets the default waiting time for every retrieval operation
@@ -71,15 +79,19 @@ namespace NetEti.WebTools
         /// Sets up ImplicitWait and FluentWait. Navigates to the given url.
         /// </summary>
         /// <param name="url">The complete website url including https, etc.</param>
-        /// <param name="driverPath">The full path to the webdriver.</param>
-        public void SetupDriver(string url, string driverPath)
+        /// <param name="driverPath">Webdriver's containing directory.</param>
+        /// <param name="timeout">Webdriver search-for-stable-element-timeout, default = 60 (seconds).</param>
+        public void SetupDriver(string url, string driverPath, int timeout)
         {
             this.WebDriver?.Dispose();
-            this.SetupDriverInstance(driverPath);
+            // Hier wird auf das Beenden der asynchronen Methode SetupDriverInstance gewartet.
+            Task task = this.SetupDriverInstance(driverPath);
+            task.Wait();
+
             this.ImplicitWait = new WebDriverWait(this.WebDriver, TimeSpan.FromSeconds(0));
 
             this.FluentWait = new DefaultWait<IWebDriver>(this.WebDriver);
-            this.FluentWait.Timeout = TimeSpan.FromSeconds(60);
+            this.FluentWait.Timeout = TimeSpan.FromSeconds(timeout);
             this.FluentWait.PollingInterval = TimeSpan.FromMilliseconds(250);
             this.FluentWait.IgnoreExceptionTypes(typeof(NoSuchElementException));
             this.FluentWait.Message = "Element to be searched not found";
@@ -91,13 +103,14 @@ namespace NetEti.WebTools
         /// Tries to instantiate the concrete Driver (e.g. ChromeDriver), DefaultWait and FluentWait.
         /// </summary>
         /// <param name="url">True, if succeeded.</param>
-        /// <param name="driverPath">The full path to the webdriver.</param>
+        /// <param name="driverPath">Webdriver's containing directory.</param>
+        /// <param name="timeout">Webdriver search-for-stable-element-timeout, default = 60 (seconds).</param>
         /// <returns>True, if succeeded.</returns>
-        public bool TrySetupDriver(string url, string driverPath)
+        public bool TrySetupDriver(string url, string driverPath, int timeout)
         {
             try
             {
-                this.SetupDriver(url, driverPath);
+                this.SetupDriver(url, driverPath, timeout);
                 return true;
             }
             catch

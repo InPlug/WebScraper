@@ -3,7 +3,6 @@ using System.Collections.ObjectModel;
 using System.Drawing;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Interactions.Internal;
-using OpenQA.Selenium.Internal;
 
 namespace GetDynamicWebsiteContent
 {
@@ -351,6 +350,21 @@ namespace GetDynamicWebsiteContent
             {
                 throw new NoSuchElementException("StableWebElement.Execute failed. Element is no longer accessible!");
             }
+        }
+
+        string IWebElement.GetDomAttribute(string attributeName)
+        {
+            throw new NotImplementedException();
+        }
+
+        string IWebElement.GetDomProperty(string propertyName)
+        {
+            throw new NotImplementedException();
+        }
+
+        ISearchContext IWebElement.GetShadowRoot()
+        {
+            throw new NotImplementedException();
         }
 
         #endregion private members

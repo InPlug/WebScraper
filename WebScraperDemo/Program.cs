@@ -12,8 +12,7 @@ namespace Vishnu_UserModules
             TreeEvent treeEvent = null;
             CheckCovid19 demoChecker = new CheckCovid19();
             demoChecker.NodeProgressChanged += SubNodeProgressChanged;
-            bool? logicalResult = demoChecker.Run(@"Covid19_Archive.txt|holt Covid-19 Zahlen von Johns Hopkins und RKI",
-                // new TreeParameters("MainTree", null) { CheckerDllDirectory = @"c:\Users\micro\Documents\private4\WPF\Eti\NetEti\Tests\TestJobs\CheckSpecials\Plugin" }, treeEvent);
+            bool? logicalResult = demoChecker.Run(@"Covid19_Archive.txt|holt Covid-19 Zahlen von Johns Hopkins",
                 new TreeParameters("MainTree", null) { CheckerDllDirectory = Directory.GetCurrentDirectory() }, treeEvent);
             string logicalResultString;
             switch (logicalResult)

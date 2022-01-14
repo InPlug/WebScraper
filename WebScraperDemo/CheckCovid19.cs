@@ -18,7 +18,6 @@ namespace Vishnu_UserModules
     /// einem konfigurierten UserAssemblyDirectory dynamisch geladen werden.
     /// Vishnu ruft dann je nach weiteren Konfigurationen (Trigger) die öffentliche
     /// Methode "Run" des UserCheckers auf.
-    /// TODO: ersetzen Sie diesen Kommentar durch Ihren eigenen Kommentar.
     /// </summary>
     /// <remarks>
     /// Autor: Erik Nagel
@@ -30,7 +29,6 @@ namespace Vishnu_UserModules
         #region INodeChecker Implementation
 
         const string JohnsHopkinsUrl = "https://coronavirus.jhu.edu/map.html";
-        const string RKIUrl = "https://experience.arcgis.com/experience/478220a4c454480e823b17327b2bf1d4/page/page_1";
 
         /// <summary>
         /// Kann aufgerufen werden, wenn sich der Verarbeitungs-Fortschritt
@@ -190,70 +188,8 @@ namespace Vishnu_UserModules
         private void LogWebsites()
         {
             this.LogJohnsHopkins();
-            this.OnNodeProgressChanged(this.GetType().Name, 100, 40, ItemsTypes.items);
-            this._covidLogger.Flush();
-            this.LogRKI();
             this.OnNodeProgressChanged(this.GetType().Name, 100, 85, ItemsTypes.items);
             this._covidLogger.Flush();
-        }
-
-        private void LogRKI()
-        {
-            using (ChromeScraper chromeScraper = new ChromeScraper(RKIUrl, this._driverPath))
-            {
-                this.Publish("LogRKI() Start");
-
-                // würde hier noch nichts finden: int countIFrames = chromeScraper.WebDriver.FindElements(By.TagName("iframe")).Count;
-                By by1 = By.XPath("//iframe[contains(@src,'')]"); // allgemeine Suche
-                StableWebElement stableInnerFrame = chromeScraper.WaitForStableWebElement(by1, LocatorCondition.IsVisible); // dient auch zum Warten, bis überhaupt iFrames geladen sind
-                // hier wäre das ok (insgesamt ein iFrame): int countIFrames = chromeScraper.WebDriver.FindElements(By.TagName("iframe")).Count;
-
-                // hier keine weitere Suche nötig: StableWebElement stableInnerFrame = chromeScraper.WaitForStableWebElement(by1, LocatorCondition.IsVisible);
-                // "Coronavirus COVID-19 Global Cases by Johns Hopkins CSSE"
-
-                int germanyCases;
-                int germanyDeaths;
-
-                this.Publish("vor driver.SwitchTo().Frame(stableInnerFrame)");
-                chromeScraper.WebDriver.SwitchTo().Frame(stableInnerFrame);
-                this.Publish("nach driver.SwitchTo().Frame(stableInnerFrame)");
-
-                // By by2 = By.XPath("//div[@id='ember72']"); // findet zwar das Element, aber der Text könnte noch leer sein.
-                By by2 = By.XPath("//div[@id='ember72' and .//*[contains(text(), 'COVID-19-F')]]"); // liefert "COVID-19-Fälle\r\n1.028.089\r\naus total 1.028.089"
-                StableWebElement stableGermanyCasesElement = chromeScraper.WaitForStableWebElement(by2, LocatorCondition.IsVisible);
-                string tmpString1 = stableGermanyCasesElement.Text.Replace(Environment.NewLine, "|");
-                this.Publish(tmpString1);
-
-                string numString1 = new Regex(@".*?\|(.*)\|.*", RegexOptions.IgnoreCase).Matches(tmpString1)[0].Groups[1].Value;
-
-                if (int.TryParse(numString1.Replace(".", ""), out germanyCases))
-                {
-                    this.LogCovidData(String.Format($"RKI_Deutschland Erkrankungen: {germanyCases:N0}"));
-                }
-                else
-                {
-                    this.LogCovidData(String.Format($"RKI_Deutschland Erkrankungen: - konnte nicht ermittelt werden -"));
-                }
-
-                // By by3 = By.XPath("//div[@id='ember86']"); // findet zwar das Element, aber der Text könnte noch leer sein.
-                By by3 = By.XPath("//div[@id='ember86' and .//*[contains(text(), 'COVID-19-T')]]"); // liefert "COVID-19-Todesfälle\r\n15.965\r\naus total 15.965"
-                StableWebElement stableGermanyDeathsElement = chromeScraper.WaitForStableWebElement(by3, LocatorCondition.IsVisible);
-                string tmpString2 = stableGermanyDeathsElement.Text.Replace(Environment.NewLine, "|");
-                this.Publish(tmpString2);
-
-                string numString2 = new Regex(@".*?\|(.*)\|.*", RegexOptions.IgnoreCase).Matches(tmpString2)[0].Groups[1].Value;
-
-                if (int.TryParse(numString2.Replace(".", ""), out germanyDeaths))
-                {
-                    this.LogCovidData(String.Format($"RKI_Deutschland Tote: {germanyDeaths:N0}"));
-                }
-                else
-                {
-                    this.LogCovidData(String.Format($"RKI_Deutschland Tote: - konnte nicht ermittelt werden -"));
-                }
-
-                this.Publish("LogRKI() Ende");
-            }
         }
 
         private void LogJohnsHopkins()
@@ -273,7 +209,7 @@ namespace Vishnu_UserModules
                 chromeScraper.WebDriver.SwitchTo().Frame(stableInnerFrame);
                 this.Publish("nach driver.SwitchTo().Frame(stableInnerFrame)");
 
-                By by2 = By.XPath("//div/h5[.//span[contains(text(),'Germany')]]"); // liefert h5 mit enthaltenem Element mit Text 'Germany'
+                By by2 = By.XPath("//div[@class='external-html' and .//*[contains(text(), 'Germany')]]"); // liefert "Germany\r\n28-Day: 1.003.634 | 8.395\r\nTotals: 7.504.637 | 113.939"
                 StableWebElement stableGermanyElement = chromeScraper.WaitForStableWebElement(by2, LocatorCondition.IsVisible);
 
                 this.Publish(stableGermanyElement.TagName + " vor Click()");
@@ -282,7 +218,27 @@ namespace Vishnu_UserModules
 
                 string tmpString = stableGermanyElement.Text;
                 this.Publish(tmpString);
-                if (int.TryParse(tmpString.Replace(" Germany", "").Replace(".", ""), out germanyCases))
+
+                By bySub1 = By.XPath("p[3]"); // liefert "Totals: 7.531.905 | 113.981"
+                IStableWebElement stableGermanyTotalsElement = (IStableWebElement)stableGermanyElement.FindElement(bySub1);
+
+                string tmpString2 = stableGermanyTotalsElement.Text; // "Totals: 7.531.905 | 113.981"
+                this.Publish(tmpString2);
+
+                MatchCollection matchCollection2 = new Regex(@".*?([\d\.]+).*?").Matches(tmpString2);
+                string totalsInfectedString = "";
+                string totalsDeadString = "";
+                if (matchCollection2?.Count > 0 && matchCollection2[0].Groups?.Count > 1)
+                {
+                    totalsInfectedString = matchCollection2[0].Groups[1].Value;
+                }
+                if (matchCollection2?.Count > 1 && matchCollection2[1].Groups?.Count > 1)
+                {
+                    totalsDeadString = matchCollection2[1].Groups[1].Value;
+                }
+                this.Publish(String.Format($"infected: {totalsInfectedString}, dead: {totalsDeadString}"));
+
+                if (int.TryParse(totalsInfectedString.Replace(".", ""), out germanyCases))
                 {
                     this.LogCovidData(String.Format($"JHU_Deutschland Erkrankungen: {germanyCases:N0}"));
                 }
@@ -290,29 +246,7 @@ namespace Vishnu_UserModules
                 {
                     this.LogCovidData(String.Format($"JHU_Deutschland Erkrankungen: - konnte nicht ermittelt werden -"));
                 }
-
-                // By by3 = By.XPath("//div[@id='ember100']"); // findet zwar das Element, aber der Text könnte noch leer sein.
-                /* vor Website-Änderung von JohnsHopkins am 01.12.2020:
-                By by3 = By.XPath("//div[@id='ember100' and .//*[contains(text(), 'Global Deaths')]]"); // liefert 'Global Deaths\r\n15.640'.
-                StableWebElement stableGermanyDeathsElement = chromeScraper.WaitForStableWebElement(by3, LocatorCondition.IsVisible);
-                string tmpString2 = stableGermanyDeathsElement.Text;
-                this.Publish(tmpString2);
-                if (int.TryParse(tmpString2.Replace("Global Deaths" + Environment.NewLine, "").Replace(".", ""), out germanyDeaths))
-                {
-                    this.LogCovidData(String.Format($"JHU_Deutschland Tote: {germanyDeaths:N0}"));
-                }
-                else
-                {
-                    this.LogCovidData(String.Format($"JHU_Deutschland Tote: - konnte nicht ermittelt werden -"));
-                }
-                */
-
-                // nach Website-Änderung von JohnsHopkins am 01.12.2020:
-                By by3 = By.XPath("//div[@id='ember106' and .//*[contains(text(), 'Germany')]]"); // liefert '16.694 deaths\r\nGermany'.
-                StableWebElement stableGermanyDeathsElement = chromeScraper.WaitForStableWebElement(by3, LocatorCondition.IsVisible);
-                string tmpString2 = stableGermanyDeathsElement.Text;
-                this.Publish(tmpString2);
-                if (int.TryParse(tmpString2.Replace(" deaths " + Environment.NewLine + "Germany", "").Replace(".", ""), out germanyDeaths))
+                if (int.TryParse(totalsDeadString.Replace(".", ""), out germanyDeaths))
                 {
                     this.LogCovidData(String.Format($"JHU_Deutschland Tote: {germanyDeaths:N0}"));
                 }
@@ -322,7 +256,6 @@ namespace Vishnu_UserModules
                 }
 
                 this.Publish("LogJohnsHopkins() Ende");
-
             }
         }
 
@@ -402,7 +335,7 @@ namespace Vishnu_UserModules
                 + Environment.NewLine
                 + "Parameter: Pfad zur Datei mit den Covid19-Infos|Beschreibung"
                 + Environment.NewLine
-                + @"Beispiel: Covid19_Archive.txt|Holt Johns Hopkins- und RKI-Zahlen für Deutschland."
+                + @"Beispiel: Covid19_Archive.txt|Holt Johns Hopkins-Zahlen für Deutschland."
              );
         }
 
