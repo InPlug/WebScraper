@@ -86,8 +86,6 @@ namespace NetEti.WebTools
         /// <returns>Version der aktuell lokal installierten Treibers "chromedriver.exe".</returns>
         public async Task Install(string chromeVersion, string driverPath, bool forceDownload)
         {
-            this.killChromedriverZombies();
-
             // Instructions from https://chromedriver.chromium.org/downloads/version-selection
             //   First, find out which version of Chrome you are using. Let's say you have Chrome 72.0.3626.81.
             if (chromeVersion == null)
@@ -189,6 +187,8 @@ namespace NetEti.WebTools
             {
                 throw new Exception($"ChromeDriver download request failed with status code: {driverZipResponse.StatusCode}, reason phrase: {driverZipResponse.ReasonPhrase}");
             }
+
+            this.killChromedriverZombies();
 
             // this reads the zipfile as a stream, opens the archive, 
             // and extracts the chromedriver executable to the targetPath without saving any intermediate files to disk
