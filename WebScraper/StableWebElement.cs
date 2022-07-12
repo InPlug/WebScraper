@@ -357,6 +357,21 @@ namespace GetDynamicWebsiteContent
             }
         }
 
+        string IWebElement.GetDomAttribute(string attributeName)
+        {
+            throw new NotImplementedException();
+        }
+
+        string IWebElement.GetDomProperty(string propertyName)
+        {
+            throw new NotImplementedException();
+        }
+
+        ISearchContext IWebElement.GetShadowRoot()
+        {
+            throw new NotImplementedException();
+        }
+
         /*
         string IWebElement.GetDomAttribute(string attributeName)
         {
