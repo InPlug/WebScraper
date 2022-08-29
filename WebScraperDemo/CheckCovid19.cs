@@ -1,18 +1,14 @@
-﻿using GetDynamicWebsiteContent;
-using NetEti.ApplicationControl;
+﻿using NetEti.ApplicationControl;
 using NetEti.Globals;
 using NetEti.WebTools;
 using OpenQA.Selenium;
+using SeleniumExtras.WaitHelpers;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.RegularExpressions;
 using Vishnu.Interchange;
 
-// ACHTUNG: Selenium.WebDriver und Selenium.Support müssen auf Version 3.141.0 bleiben,
-//    NICHT auf die 4er Version updaten, sonst Fehler im Vishnu-Betrieb:
-//          Could not load type 'OpenQA.Selenium.Internal.IWrapsElement' from assembly 'WebDriver,
-//          Version=4.0.0.0, Culture=neutral, PublicKeyToken=null'
 namespace Vishnu_UserModules
 {
     /// <summary>
@@ -30,6 +26,11 @@ namespace Vishnu_UserModules
     /// </remarks>
     public class CheckCovid19 : INodeChecker, IDisposable
     {
+        /// <summary>
+        /// Maximal waiting time for a searched web-element in seconds.
+        /// </summary>
+        public const int DEFAULT_SEARCH_TIMEOUT_SECONDS = 60;
+
         #region INodeChecker Implementation
 
         const string JohnsHopkinsUrl = "https://coronavirus.jhu.edu/map.html";
@@ -203,7 +204,17 @@ namespace Vishnu_UserModules
                 this.Publish("LogJohnsHopkins() Start");
 
                 By by1 = By.XPath("//iframe[contains(@title,'Global Cases')]"); // konkretes iFrame
-                StableWebElement stableInnerFrame = chromeScraper.WaitForStableWebElement(by1, LocatorCondition.IsVisible);
+
+                IWebElement stableInnerFrame = null;
+                try
+                {
+                    stableInnerFrame = chromeScraper.GetElement(ExpectedConditions.ElementIsVisible(by1), new TimeSpan(0, 0, CheckCovid19.DEFAULT_SEARCH_TIMEOUT_SECONDS));
+                }
+                catch (Exception ex) when (ex is NoSuchElementException || ex is WebDriverTimeoutException)
+                {
+                    this.Publish($"Exception occurred in SeleniumHelper.SendKeys(): element located by {by1.ToString()} could not be located within {CheckCovid19.DEFAULT_SEARCH_TIMEOUT_SECONDS} seconds.");
+                }
+
                 // "Coronavirus COVID-19 Global Cases by Johns Hopkins CSSE"
 
                 int germanyCases = 0;
@@ -214,7 +225,16 @@ namespace Vishnu_UserModules
                 this.Publish("nach driver.SwitchTo().Frame(stableInnerFrame)");
 
                 By by2 = By.XPath("//div[@class='external-html' and .//*[contains(text(), 'Germany')]]"); // liefert "Germany\r\n28-Day: 1.003.634 | 8.395\r\nTotals: 7.504.637 | 113.939"
-                StableWebElement stableGermanyElement = chromeScraper.WaitForStableWebElement(by2, LocatorCondition.IsVisible);
+
+                IWebElement stableGermanyElement = null;
+                try
+                {
+                    stableGermanyElement = chromeScraper.GetElement(ExpectedConditions.ElementIsVisible(by2), new TimeSpan(0, 0, CheckCovid19.DEFAULT_SEARCH_TIMEOUT_SECONDS));
+                }
+                catch (Exception ex) when (ex is NoSuchElementException || ex is WebDriverTimeoutException)
+                {
+                    this.Publish($"Exception occurred in SeleniumHelper.SendKeys(): element located by {by2.ToString()} could not be located within {CheckCovid19.DEFAULT_SEARCH_TIMEOUT_SECONDS} seconds.");
+                }
 
                 this.Publish(stableGermanyElement.TagName + " vor Click()");
                 stableGermanyElement.Click();
@@ -224,7 +244,7 @@ namespace Vishnu_UserModules
                 this.Publish(tmpString);
 
                 By bySub1 = By.XPath("p[3]"); // liefert "Totals: 7.531.905 | 113.981"
-                IStableWebElement stableGermanyTotalsElement = (IStableWebElement)stableGermanyElement.FindElement(bySub1);
+                IWebElement stableGermanyTotalsElement = (stableGermanyElement.FindElement(bySub1));
 
                 string tmpString2 = stableGermanyTotalsElement.Text; // "Totals: 7.531.905 | 113.981"
                 this.Publish(tmpString2);
@@ -324,7 +344,8 @@ namespace Vishnu_UserModules
 
         private void Publish(string message)
         {
-            InfoController.Say("CheckCovid19 " + message);
+            Console.WriteLine(message);
+            // InfoController.Say("CheckCovid19 " + message);
         }
 
         private void LogCovidData(string message)

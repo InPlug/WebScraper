@@ -1,15 +1,33 @@
-﻿using GetDynamicWebsiteContent;
-using OpenQA.Selenium;
+﻿using OpenQA.Selenium;
 using OpenQA.Selenium.Support.UI;
 using System;
 using System.Threading.Tasks;
 
-// ACHTUNG: Selenium.WebDriver und Selenium.Support müssen auf Version 3.141.0 bleiben,
-//    NICHT auf die 4er Version updaten, sonst Fehler im Vishnu-Betrieb:
-//          Could not load type 'OpenQA.Selenium.Internal.IWrapsElement' from assembly 'WebDriver,
-//          Version=4.0.0.0, Culture=neutral, PublicKeyToken=null'
 namespace NetEti.WebTools
 {
+    ///<summary>Provides the various selenium-locator types.</summary>
+    public enum LocatorType
+    {
+        ///<summary>default</summary>
+        None,
+        ///<summary>Locates elements whose class name contains the search value(compound class names are not permitted)</summary>
+        ClassName,
+        ///<summary>Locates elements matching a CSS selector</summary>
+        CssSelector,
+        ///<summary>Locates elements whose ID attribute matches the search value</summary>
+        Id,
+        ///<summary>Locates elements whose NAME attribute matches the search value</summary>
+        Name,
+        ///<summary>Locates anchor elements whose visible text matches the search value</summary>
+        LinkText,
+        ///<summary>Locates anchor elements whose visible text contains the search value.If multiple elements are matching, only the first one will be selected.</summary>
+        PartialLinkText,
+        ///<summary>Locates elements whose tag name matches the search value</summary>
+        TagName,
+        ///<summary>Locates elements matching an XPath expression</summary>
+        Xpath
+    }
+
     /// <summary>
     /// Determines whether the existence or the visibility of an element is to be checked.
     /// </summary>
@@ -32,26 +50,49 @@ namespace NetEti.WebTools
     /// Author: Erik Nagel
     ///
     /// 28.11.2020 Erik Nagel: created.
+    /// 28.08.2022 Erik Nagel: Revised for selenium 4.
     /// </remarks>
     public abstract class WebScraperBase : IDisposable
     {
+        /// <summary>
+        /// Default maximum seconds for selenium waits.
+        /// </summary>
+        public const int DEFAULT_PAGE_LOAD_TIMEOUT_SECONDS = 10;
 
         /// <summary>
-        /// Constructor - takes a website url and starts the WebDriver.
+        /// Constructor - initializes the WebDriver.
+        /// </summary>
+        /// <param name="driverPath">Webdriver's containing directory.</param>
+        public WebScraperBase(string driverPath) : this(null, driverPath, DEFAULT_PAGE_LOAD_TIMEOUT_SECONDS) { }
+
+        /// <summary>
+        /// Constructor - initializes the WebDriver with a given timeout for page-loading.
+        /// </summary>
+        /// <param name="driverPath">Webdriver's containing directory.</param>
+        /// <param name="pageLoadTimeoutSeconds">Webdriver page-load-timeout, default = 10 (seconds).</param>
+        public WebScraperBase(string driverPath, int pageLoadTimeoutSeconds) : this(null, driverPath, pageLoadTimeoutSeconds) { }
+
+        /// <summary>
+        /// Constructor - initializes the WebDriver and navigates to the given url.
         /// </summary>
         /// <param name="url">The complete website url including https, etc.</param>
         /// <param name="driverPath">Webdriver's containing directory.</param>
-        public WebScraperBase(string url, string driverPath) : this(url, driverPath, 60) { }
+        public WebScraperBase(string url, string driverPath) : this(url, driverPath, DEFAULT_PAGE_LOAD_TIMEOUT_SECONDS) { }
 
         /// <summary>
-        /// Constructor - takes a website url and starts the WebDriver.
+        /// Constructor - initializes the WebDriver, sets the timeout for page-loading and navigates to the given url.
         /// </summary>
         /// <param name="url">The complete website url including https, etc.</param>
         /// <param name="driverPath">Webdriver's containing directory.</param>
-        /// <param name="timeout">Webdriver search-for-stable-element-timeout, default = 60 (seconds).</param>
-        public WebScraperBase(string url, string driverPath, int timeout)
+        /// <param name="pageLoadTimeoutSeconds">Webdriver page-load-timeout, default = 10 (seconds).</param>
+        public WebScraperBase(string url, string driverPath, int pageLoadTimeoutSeconds)
         {
-            this.SetupDriver(url, driverPath, timeout);
+            this.SetupDriver(driverPath);
+            if (!String.IsNullOrEmpty(url))
+            {
+                this.WebDriver.Manage().Timeouts().PageLoad = TimeSpan.FromSeconds(pageLoadTimeoutSeconds);
+                this.WebDriver.Navigate().GoToUrl(url);
+            }
         }
 
         /// <summary>
@@ -67,54 +108,38 @@ namespace NetEti.WebTools
         protected abstract Task SetupDriverInstance(string driverPath);
 
         /// <summary>
-        /// Sets the default waiting time for every retrieval operation
-        /// Default: 0 seconds.
-        /// </summary>
-        protected WebDriverWait ImplicitWait { get; set; }
-
-        /// <summary>
-        /// Sets the waiting time for a specific retrieval operation
-        /// Default: 30 seconds.
-        /// </summary>
-        protected DefaultWait<IWebDriver> FluentWait { get; set; }
-
-        /// <summary>
         /// Disposes an eventually previously instantiated driver and calls SetupDriverInstance(url)
         /// Sets up ImplicitWait and FluentWait. Navigates to the given url.
         /// </summary>
-        /// <param name="url">The complete website url including https, etc.</param>
         /// <param name="driverPath">Webdriver's containing directory.</param>
-        /// <param name="timeout">Webdriver search-for-stable-element-timeout, default = 60 (seconds).</param>
-        public void SetupDriver(string url, string driverPath, int timeout)
+        public void SetupDriver(string driverPath)
         {
             this.WebDriver?.Dispose();
-            // Hier wird auf das Beenden der asynchronen Methode SetupDriverInstance gewartet.
             Task task = this.SetupDriverInstance(driverPath);
             task.Wait();
-
-            this.ImplicitWait = new WebDriverWait(this.WebDriver, TimeSpan.FromSeconds(0));
-
-            this.FluentWait = new DefaultWait<IWebDriver>(this.WebDriver);
-            this.FluentWait.Timeout = TimeSpan.FromSeconds(timeout);
-            this.FluentWait.PollingInterval = TimeSpan.FromMilliseconds(250);
-            this.FluentWait.IgnoreExceptionTypes(typeof(NoSuchElementException));
-            this.FluentWait.Message = "Element to be searched not found";
-
-            this.WebDriver.Navigate().GoToUrl(url);
+            this.WebDriver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(0); // no implicite waiting
         }
 
         /// <summary>
-        /// Tries to instantiate the concrete Driver (e.g. ChromeDriver), DefaultWait and FluentWait.
+        /// Loads a web-page from an uri.
         /// </summary>
-        /// <param name="url">True, if succeeded.</param>
+        /// <param name="uri">The website address (uri/url).</param>
+        public void Load(Uri uri)
+        {
+            var absoluteUri = uri.AbsoluteUri;
+            this.WebDriver.Navigate().GoToUrl(uri);
+        }
+
+        /// <summary>
+        /// Tries to instantiate the concrete Driver (e.g. ChromeDriver).
+        /// </summary>
         /// <param name="driverPath">Webdriver's containing directory.</param>
-        /// <param name="timeout">Webdriver search-for-stable-element-timeout, default = 60 (seconds).</param>
         /// <returns>True, if succeeded.</returns>
-        public bool TrySetupDriver(string url, string driverPath, int timeout)
+        public bool TrySetupDriver(string driverPath)
         {
             try
             {
-                this.SetupDriver(url, driverPath, timeout);
+                this.SetupDriver(driverPath);
                 return true;
             }
             catch
@@ -124,24 +149,23 @@ namespace NetEti.WebTools
         }
 
         /// <summary>
-        /// Waits by Selenium fluent wait until a StableWebElement is found or a timeout occurs.
+        /// Waits under a given condition for a web-page-element  for a given time and returns it, if sucessful.
         /// </summary>
-        /// <param name="locator">The search pattern to locate a specific DOM-element.</param>
-        /// <param name="condition">Search either for visible or for existing elements.</param>
-        /// <returns>Found DOM-element as StableWebElement.</returns>
-        public StableWebElement WaitForStableWebElement(By locator, LocatorCondition condition)
+        /// <param name="waitCondition">A function, that describes, under which circumstances a result is accepted.</param>
+        /// <param name="maxWaitTime">Maximum time to wait, otherwise an exception is thrown.</param>
+        /// <returns>IWebElement if succesful.</returns>
+        public IWebElement GetElement(Func<IWebDriver, IWebElement> waitCondition, TimeSpan maxWaitTime)
         {
-            switch (condition)
+            IWebElement webElement = null;
+            try
             {
-                case LocatorCondition.Exists:
-                    return new StableWebElement(this.FluentWait.Until(SeleniumExtras.WaitHelpers.ExpectedConditions.ElementExists(locator)), locator);
-                case LocatorCondition.IsVisible:
-                    return new StableWebElement(this.FluentWait.Until(SeleniumExtras.WaitHelpers.ExpectedConditions.ElementIsVisible(locator)), locator);
-                case LocatorCondition.IsClickable:
-                    return new StableWebElement(this.FluentWait.Until(SeleniumExtras.WaitHelpers.ExpectedConditions.ElementToBeClickable(locator)), locator);
-                default:
-                    throw new ArgumentException("WebScraperBase: unknown LocatorCondition.");
+                webElement = new WebDriverWait(this.WebDriver, maxWaitTime).Until(waitCondition);
             }
+            catch (Exception ex) when (ex is NoSuchElementException || ex is WebDriverTimeoutException)
+            {
+                throw;
+            }
+            return webElement;
         }
 
         #region IDisposable Member

@@ -1,0 +1,86 @@
+bool
+
+	public static Func<IWebDriver, bool> TitleIs(string title)
+
+        TitleIs(string title)
+        TitleContains(string title)
+				UrlToBe(string url)
+        UrlContains(string fraction)
+        UrlMatches(string regex)
+
+	public static Func<IWebDriver, bool> TextToBePresentInElementLocated(By locator, string text)
+
+				TextToBePresentInElementLocated(By locator, string text)
+        TextToBePresentInElementValue(By locator, string text)
+        InvisibilityOfElementWithText(By locator, string text)
+
+	public static Func<IWebDriver, bool> TextToBePresentInElement(IWebElement element, string text)
+
+        TextToBePresentInElement(IWebElement element, string text)
+        TextToBePresentInElementValue(IWebElement element, string text)
+
+	public static Func<IWebDriver, bool> InvisibilityOfElementLocated(By locator)
+	
+				InvisibilityOfElementLocated(By locator)
+
+  public static Func<IWebDriver, bool> ElementToBeSelected(By locator)
+
+        ElementToBeSelected(By locator)
+
+  public static Func<IWebDriver, bool> ElementSelectionStateToBe(By locator, bool selected)
+  			
+  			ElementSelectionStateToBe(By locator, bool selected)
+
+  public static Func<IWebDriver, bool> StalenessOf(IWebElement element)
+  
+  			StalenessOf(IWebElement element)
+				ElementToBeSelected(IWebElement element)
+
+  public static Func<IWebDriver, bool> ElementToBeSelected(IWebElement element, bool selected)
+  
+  			ElementToBeSelected(IWebElement element, bool selected)
+				ElementSelectionStateToBe(IWebElement element, bool selected)
+
+  public static Func<IWebDriver, bool> AlertState(bool state)
+
+   			AlertState(bool state)
+
+IWebElement
+
+	public static Func<IWebDriver, IWebElement> ElementExists(By locator)
+
+        ElementExists(By locator)
+        ElementIsVisible(By locator)
+        ElementToBeClickable(By locator)
+        
+  public static Func<IWebDriver, IWebElement> ElementToBeClickable(IWebElement element)
+
+  			ElementToBeClickable(IWebElement element)
+
+ReadOnlyCollection<IWebElement>>        
+
+	public static Func<IWebDriver, ReadOnlyCollection<IWebElement>> VisibilityOfAllElementsLocatedBy(By locator)
+
+        VisibilityOfAllElementsLocatedBy(By locator)
+        PresenceOfAllElementsLocatedBy(By locator)
+
+	public static Func<IWebDriver, ReadOnlyCollection<IWebElement>> VisibilityOfAllElementsLocatedBy(ReadOnlyCollection<IWebElement> elements)
+
+        VisibilityOfAllElementsLocatedBy(ReadOnlyCollection<IWebElement> elements)
+
+IAlert
+
+	public static Func<IWebDriver, IAlert> AlertIsPresent()
+
+      AlertIsPresent()
+
+IWebDriver
+
+  public static Func<IWebDriver, IWebDriver> FrameToBeAvailableAndSwitchToIt(By locator)
+		  
+		  FrameToBeAvailableAndSwitchToIt(By locator)
+
+	public static Func<IWebDriver, IWebDriver> FrameToBeAvailableAndSwitchToIt(string frameLocator)
+	
+			FrameToBeAvailableAndSwitchToIt(string frameLocator)
+

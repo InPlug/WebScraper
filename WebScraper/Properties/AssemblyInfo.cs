@@ -10,7 +10,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("NetEti")]
 [assembly: AssemblyProduct("NetEti.WebScraper")]
-[assembly: AssemblyCopyright("Copyright © Erik Nagel, NetEti 2020")]
+[assembly: AssemblyCopyright("Copyright © Erik Nagel, NetEti 2020-2022")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
