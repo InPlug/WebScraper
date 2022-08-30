@@ -54,7 +54,7 @@ namespace NetEti.WebTools
         {
             await InstallChromeDriver(driverPath);
 
-            ChromeDriverService service = ChromeDriverService.CreateDefaultService(Directory.GetCurrentDirectory());
+            ChromeDriverService service = ChromeDriverService.CreateDefaultService(driverPath);
             service.SuppressInitialDiagnosticInformation = true;
             service.HideCommandPromptWindow = true;
             ChromeOptions chromeOptions = new ChromeOptions();
