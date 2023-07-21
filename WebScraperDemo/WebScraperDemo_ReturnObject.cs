@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Runtime.Serialization;
+﻿using System.Runtime.Serialization;
 using System.Text;
 
 namespace Vishnu_UserModules
@@ -13,19 +11,20 @@ namespace Vishnu_UserModules
     ///
     /// 27.11.2020 Erik Nagel: erstellt
     /// </remarks>
-    [Serializable()]
-    public class CheckCovid19_ReturnObject
+    [DataContract] //[Serializable()]
+    public class WebScraperDemo_ReturnObject
     {
         /// <summary>
         /// Wrapper-Klasse um List&lt;SubResult&gt; SubResults.
         /// </summary>
-        [Serializable()]
+        [DataContract] //[Serializable()]
         public class SubResultListContainer : ISerializable
         {
             /// <summary>
             /// 0 bis n Datensätze bestehend aus einem Detail-Ergebnis (bool?) und Detail-Record (hier: string).
             /// </summary>
-            public List<SubResult> SubResults { get; set; }
+            [DataMember]
+            public List<SubResult>? SubResults { get; set; }
 
             /// <summary>
             /// Standard Konstruktor.
@@ -42,7 +41,7 @@ namespace Vishnu_UserModules
             /// <param name="context">Übertragungs-Kontext.</param>
             protected SubResultListContainer(SerializationInfo info, StreamingContext context)
             {
-                this.SubResults = (List<SubResult>)info.GetValue("SubResults", typeof(List<SubResult>));
+                this.SubResults = (List<SubResult>?)info.GetValue("SubResults", typeof(List<SubResult>));
             }
 
             /// <summary>
@@ -79,7 +78,7 @@ namespace Vishnu_UserModules
             /// </summary>
             /// <param name="obj"></param>
             /// <returns>True, wenn das übergebene Result inhaltlich (ohne Timestamp) gleich diesem Result ist.</returns>
-            public override bool Equals(object obj)
+            public override bool Equals(object? obj)
             {
                 if (obj == null || this.GetType() != obj.GetType())
                 {
@@ -89,14 +88,14 @@ namespace Vishnu_UserModules
                 {
                     return true;
                 }
-                SubResultListContainer subResultList = obj as SubResultListContainer;
-                if (this.SubResults.Count != subResultList.SubResults.Count)
+                SubResultListContainer subResultList = (SubResultListContainer)obj;
+                if (this.SubResults?.Count != subResultList.SubResults?.Count)
                 {
                     return false;
                 }
-                for (int i = 0; i < this.SubResults.Count; i++)
+                for (int i = 0; i < this.SubResults?.Count; i++)
                 {
-                    if (this.SubResults[i] != subResultList.SubResults[i])
+                    if (this.SubResults[i] != subResultList.SubResults?[i])
                     {
                         return false;
                     }
@@ -117,20 +116,22 @@ namespace Vishnu_UserModules
         /// <summary>
         /// Klasse für ein Teilergebnis.
         /// </summary>
-        [Serializable()]
+        [DataContract] //[Serializable()]
         public class SubResult : ISerializable
         {
             /// <summary>
             /// Das logische Einzelergebnis eines Unterergebnisses.
             /// true, false oder null.
             /// </summary>
+            [DataMember]
             public bool? LogicalResult { get; set; }
 
             /// <summary>
             /// Der Wert einer Detail-Information der Prüfroutine
             /// (i.d.R int).
             ///  </summary>
-            public string ResultRecord { get; set; }
+            [DataMember]
+            public string? ResultRecord { get; set; }
 
             /// <summary>
             /// Standard Konstruktor.
@@ -176,7 +177,7 @@ namespace Vishnu_UserModules
             /// </summary>
             /// <param name="obj"></param>
             /// <returns>True, wenn das übergebene Result inhaltlich (ohne Timestamp) gleich diesem Result ist.</returns>
-            public override bool Equals(object obj)
+            public override bool Equals(object? obj)
             {
                 if (obj == null || this.GetType() != obj.GetType())
                 {
@@ -207,34 +208,39 @@ namespace Vishnu_UserModules
         /// <summary>
         /// Wrapper-Klasse um List&lt;SubResult&gt; SubResults.
         /// </summary>
-        public SubResultListContainer SubResults { get; set; }
+        [DataMember]
+        public SubResultListContainer? SubResults { get; set; }
 
         /// <summary>
         /// Das logische Gesamtergebnis eines Prüfprozesses:
         /// true, false oder null.
         /// </summary>
+        [DataMember]
         public bool? LogicalResult { get; set; }
 
         /// <summary>
         /// Die Anzahl der Treffer, die das Prüfkriterium erfüllen.
         /// </summary>
-        public long RecordCount { get; set; }
+        [DataMember]
+        public long? RecordCount { get; set; }
 
         /// <summary>
         /// Name der Datei mit den letzten Covid19-Werten.
         /// </summary>
-        public string Covid19InfoFile { get; set; }
+        [DataMember]
+        public string? Covid19InfoFile { get; set; }
 
         /// <summary>
         /// Klartext-Informationen zur Prüfroutine
         /// (was die Routine prüft).
         ///  </summary>
-        public string Comment { get; set; }
+        [DataMember]
+        public string? Comment { get; set; }
 
         /// <summary>
         /// Standard Konstruktor.
         /// </summary>
-        public CheckCovid19_ReturnObject()
+        public WebScraperDemo_ReturnObject()
         {
             this.SubResults = new SubResultListContainer();
             this.LogicalResult = null;
@@ -245,11 +251,11 @@ namespace Vishnu_UserModules
         /// </summary>
         /// <param name="info">Property-Container.</param>
         /// <param name="context">Übertragungs-Kontext.</param>
-        protected CheckCovid19_ReturnObject(SerializationInfo info, StreamingContext context)
+        protected WebScraperDemo_ReturnObject(SerializationInfo info, StreamingContext context)
         {
-            this.SubResults = (SubResultListContainer)info.GetValue("SubResults", typeof(SubResultListContainer));
+            this.SubResults = (SubResultListContainer?)info.GetValue("SubResults", typeof(SubResultListContainer));
             this.LogicalResult = (bool?)info.GetValue("LogicalResult", typeof(bool?));
-            this.RecordCount = (long)info.GetValue("RecordCount", typeof(long));
+            this.RecordCount = (long?)info.GetValue("RecordCount", typeof(long));
             this.Covid19InfoFile = info.GetString("Covid19InfoFile");
             this.Comment = info.GetString("Comment");
         }
@@ -275,14 +281,17 @@ namespace Vishnu_UserModules
         /// <returns>Alle öffentlichen Properties als ein String aufbereitet.</returns>
         public override string ToString()
         {
-            string logicalResultStr = this.LogicalResult.ToString();
+            string? logicalResultStr = this.LogicalResult.ToString();
             StringBuilder str = new StringBuilder(String.Format("{0} ({1})", logicalResultStr == "" ? "null" : logicalResultStr, this.Comment));
             str.Append(String.Format("\nCovid19InfoFile {0}", this.Covid19InfoFile));
             str.Append(String.Format("\nRecordCount {0}", this.RecordCount));
             str.Append("\nRecords:");
-            foreach (SubResult subResult in this.SubResults.SubResults)
+            if (this.SubResults?.SubResults != null)
             {
-                str.Append(String.Format("\n    {0}", subResult.ToString()));
+                foreach (SubResult subResult in this.SubResults.SubResults)
+                {
+                    str.Append(String.Format("\n    {0}", subResult.ToString()));
+                }
             }
             return str.ToString();
         }
@@ -293,7 +302,7 @@ namespace Vishnu_UserModules
         /// </summary>
         /// <param name="obj">Das zu vergleichende Result.</param>
         /// <returns>True, wenn das übergebene Result inhaltlich (ohne Timestamp) gleich diesem Result ist.</returns>
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (obj == null || this.GetType() != obj.GetType())
             {

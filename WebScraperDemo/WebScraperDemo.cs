@@ -1,13 +1,10 @@
-﻿using GetDynamicWebsiteContent;
-using NetEti.ApplicationControl;
-using NetEti.Globals;
+﻿using NetEti.ApplicationControl;
 using NetEti.WebTools;
 using OpenQA.Selenium;
-using System;
-using System.Collections.Generic;
-using System.IO;
+using OpenQA.Selenium.Chrome;
+using SeleniumExtras.WaitHelpers;
+using System.ComponentModel;
 using System.Text.RegularExpressions;
-using System.Threading;
 using Vishnu.Interchange;
 
 namespace Vishnu_UserModules
@@ -19,7 +16,6 @@ namespace Vishnu_UserModules
     /// einem konfigurierten UserAssemblyDirectory dynamisch geladen werden.
     /// Vishnu ruft dann je nach weiteren Konfigurationen (Trigger) die öffentliche
     /// Methode "Run" des UserCheckers auf.
-    /// TODO: ersetzen Sie diesen Kommentar durch Ihren eigenen Kommentar.
     /// </summary>
     /// <remarks>
     /// Autor: Erik Nagel
@@ -28,22 +24,26 @@ namespace Vishnu_UserModules
     /// </remarks>
     public class CheckCovid19 : INodeChecker, IDisposable
     {
+        /// <summary>
+        /// Maximal waiting time for a searched web-element in seconds.
+        /// </summary>
+        public const int DEFAULT_SEARCH_TIMEOUT_SECONDS = 60;
+
         #region INodeChecker Implementation
 
         const string JohnsHopkinsUrl = "https://coronavirus.jhu.edu/map.html";
-        const string RKIUrl = "https://experience.arcgis.com/experience/478220a4c454480e823b17327b2bf1d4/page/page_1";
 
         /// <summary>
         /// Kann aufgerufen werden, wenn sich der Verarbeitungs-Fortschritt
         /// des Checkers geändert hat, muss aber zumindest aber einmal zum
         /// Schluss der Verarbeitung aufgerufen werden.
         /// </summary>
-        public event CommonProgressChangedEventHandler NodeProgressChanged;
+        public event ProgressChangedEventHandler? NodeProgressChanged;
 
         /// <summary>
         /// Rückgabe-Objekt des Checkers
         /// </summary>
-        public object ReturnObject
+        public object? ReturnObject
         {
             get
             {
@@ -62,11 +62,11 @@ namespace Vishnu_UserModules
         /// <param name="treeParameters">Für den gesamten Tree gültige Parameter oder null (z.Zt. unbenutzt).</param>
         /// <param name="source">Auslösendes TreeEvent (kann null sein).</param>
         /// <returns>True, False oder null</returns>
-        public bool? Run(object checkerParameters, TreeParameters treeParameters, TreeEvent source)
+        public bool? Run(object? checkerParameters, TreeParameters treeParameters, TreeEvent source)
         {
-            this._driverPath = treeParameters.CheckerDllDirectory;
+            this._driverPath = treeParameters?.CheckerDllDirectory;
             // Directory.SetCurrentDirectory(this._driverPath);
-            this.OnNodeProgressChanged(this.GetType().Name, 100, 0, ItemsTypes.items);
+            this.OnNodeProgressChanged(0);
             if (this._paraString != (checkerParameters ?? "").ToString())
             {
                 this._paraString = (checkerParameters ?? "").ToString();
@@ -77,7 +77,7 @@ namespace Vishnu_UserModules
             //--- Aufruf der Checker-Business-Logik ----------
             bool? returnCode = this.Work(source);
             //------------------------------------------------
-            this.OnNodeProgressChanged(this.GetType().Name, 100, 100, ItemsTypes.items); // erforderlich!
+            this.OnNodeProgressChanged(100); // erforderlich!
             return returnCode; // 
         }
 
@@ -136,14 +136,14 @@ namespace Vishnu_UserModules
 
         #endregion IDisposable Implementation
 
-        private IInfoController _publisher;
-        private string _driverPath;
-        private Logger _covidLogger;
-        private string _paraString;
-        private object _returnObject = null;
-        private CheckCovid19_ReturnObject _checkCovid19_ReturnObject;
-        private string _covid19InfoFile;
-        private Logger _logger;
+        private IInfoController? _publisher;
+        private string? _driverPath;
+        private Logger? _covidLogger;
+        private string? _paraString;
+        private object? _returnObject = null;
+        private WebScraperDemo_ReturnObject? _checkCovid19_ReturnObject;
+        private string? _covid19InfoFile;
+        private Logger? _logger;
 
         private bool? Work(TreeEvent source)
         {
@@ -158,7 +158,7 @@ namespace Vishnu_UserModules
             try
             {
                 this.LogWebsites();
-                string line;
+                string? line;
                 if (File.Exists(this._covid19InfoFile))
                 {
                     using (System.IO.StreamReader file = new System.IO.StreamReader(this._covid19InfoFile))
@@ -177,113 +177,97 @@ namespace Vishnu_UserModules
                 this.Publish("#CheckCovid19#: Exception: " + ex.Message);
                 throw;
             }
-            this._checkCovid19_ReturnObject.RecordCount = records.Count;
-            this._checkCovid19_ReturnObject.SubResults.SubResults.Clear();
-            if (!this.recordsToResult(records))
+            if (this._checkCovid19_ReturnObject != null)
             {
-                rtn = false;
+                this._checkCovid19_ReturnObject.RecordCount = records.Count;
+                this._checkCovid19_ReturnObject.SubResults?.SubResults?.Clear();
+                if (!this.recordsToResult(records))
+                {
+                    rtn = false;
+                }
+                this._checkCovid19_ReturnObject.LogicalResult = rtn;
+                this._returnObject = this._checkCovid19_ReturnObject;
             }
-            this._checkCovid19_ReturnObject.LogicalResult = rtn;
-            this._returnObject = this._checkCovid19_ReturnObject;
             return rtn;
         }
 
         private void LogWebsites()
         {
             this.LogJohnsHopkins();
-            this.OnNodeProgressChanged(this.GetType().Name, 100, 40, ItemsTypes.items);
-            this._covidLogger.Flush();
-            this.LogRKI();
-            this.OnNodeProgressChanged(this.GetType().Name, 100, 85, ItemsTypes.items);
-            this._covidLogger.Flush();
-        }
-
-        private void LogRKI()
-        {
-            using (ChromeScraper chromeScraper = new ChromeScraper(RKIUrl, this._driverPath))
-            {
-                this.Publish("LogRKI() Start");
-
-                // würde hier noch nichts finden: int countIFrames = chromeScraper.WebDriver.FindElements(By.TagName("iframe")).Count;
-                By by1 = By.XPath("//iframe[contains(@src,'')]"); // allgemeine Suche
-                StableWebElement stableInnerFrame = chromeScraper.WaitForStableWebElement(by1, LocatorCondition.IsVisible); // dient auch zum Warten, bis überhaupt iFrames geladen sind
-                // hier wäre das ok (insgesamt ein iFrame): int countIFrames = chromeScraper.WebDriver.FindElements(By.TagName("iframe")).Count;
-
-                // hier keine weitere Suche nötig: StableWebElement stableInnerFrame = chromeScraper.WaitForStableWebElement(by1, LocatorCondition.IsVisible);
-                // "Coronavirus COVID-19 Global Cases by Johns Hopkins CSSE"
-
-                int germanyCases;
-                int germanyDeaths;
-
-                this.Publish("vor driver.SwitchTo().Frame(stableInnerFrame)");
-                chromeScraper.WebDriver.SwitchTo().Frame(stableInnerFrame);
-                this.Publish("nach driver.SwitchTo().Frame(stableInnerFrame)");
-
-                // By by2 = By.XPath("//div[@id='ember72']"); // findet zwar das Element, aber der Text könnte noch leer sein.
-                By by2 = By.XPath("//div[@id='ember72' and .//*[contains(text(), 'COVID-19-F')]]"); // liefert "COVID-19-Fälle\r\n1.028.089\r\naus total 1.028.089"
-                StableWebElement stableGermanyCasesElement = chromeScraper.WaitForStableWebElement(by2, LocatorCondition.IsVisible);
-                string tmpString1 = stableGermanyCasesElement.Text.Replace(Environment.NewLine, "|");
-                this.Publish(tmpString1);
-
-                string numString1 = new Regex(@".*?\|(.*)\|.*", RegexOptions.IgnoreCase).Matches(tmpString1)[0].Groups[1].Value;
-
-                if (int.TryParse(numString1.Replace(".", ""), out germanyCases))
-                {
-                    this.LogCovidData(String.Format($"RKI_Deutschland Erkrankungen: {germanyCases:N0}"));
-                }
-                else
-                {
-                    this.LogCovidData(String.Format($"RKI_Deutschland Erkrankungen: - konnte nicht ermittelt werden -"));
-                }
-
-                // By by3 = By.XPath("//div[@id='ember86']"); // findet zwar das Element, aber der Text könnte noch leer sein.
-                By by3 = By.XPath("//div[@id='ember86' and .//*[contains(text(), 'COVID-19-T')]]"); // liefert "COVID-19-Todesfälle\r\n15.965\r\naus total 15.965"
-                StableWebElement stableGermanyDeathsElement = chromeScraper.WaitForStableWebElement(by3, LocatorCondition.IsVisible);
-                string tmpString2 = stableGermanyDeathsElement.Text.Replace(Environment.NewLine, "|");
-                this.Publish(tmpString2);
-
-                string numString2 = new Regex(@".*?\|(.*)\|.*", RegexOptions.IgnoreCase).Matches(tmpString2)[0].Groups[1].Value;
-
-                if (int.TryParse(numString2.Replace(".", ""), out germanyDeaths))
-                {
-                    this.LogCovidData(String.Format($"RKI_Deutschland Tote: {germanyDeaths:N0}"));
-                }
-                else
-                {
-                    this.LogCovidData(String.Format($"RKI_Deutschland Tote: - konnte nicht ermittelt werden -"));
-                }
-
-                this.Publish("LogRKI() Ende");
-            }
+            this.OnNodeProgressChanged(85);
+            this._covidLogger?.Flush();
         }
 
         private void LogJohnsHopkins()
         {
-            using (ChromeScraper chromeScraper = new ChromeScraper(JohnsHopkinsUrl, this._driverPath))
+            using (ChromeScraper chromeScraper = new ChromeScraper(JohnsHopkinsUrl, this._driverPath, new ChromeOptions()))
             {
                 this.Publish("LogJohnsHopkins() Start");
 
                 By by1 = By.XPath("//iframe[contains(@title,'Global Cases')]"); // konkretes iFrame
-                StableWebElement stableInnerFrame = chromeScraper.WaitForStableWebElement(by1, LocatorCondition.IsVisible);
+
+                IWebElement? stableInnerFrame = null;
+                try
+                {
+                    stableInnerFrame = chromeScraper.GetElement(ExpectedConditions.ElementIsVisible(by1), new TimeSpan(0, 0, CheckCovid19.DEFAULT_SEARCH_TIMEOUT_SECONDS));
+                }
+                catch (Exception ex) when (ex is NoSuchElementException || ex is WebDriverTimeoutException)
+                {
+                    this.Publish($"Exception occurred in SeleniumHelper.SendKeys(): element located by {by1.ToString()} could not be located within {CheckCovid19.DEFAULT_SEARCH_TIMEOUT_SECONDS} seconds.");
+                }
+
                 // "Coronavirus COVID-19 Global Cases by Johns Hopkins CSSE"
 
                 int germanyCases = 0;
                 int germanyDeaths = 0;
 
                 this.Publish("vor driver.SwitchTo().Frame(stableInnerFrame)");
-                chromeScraper.WebDriver.SwitchTo().Frame(stableInnerFrame);
+                chromeScraper.WebDriver?.SwitchTo().Frame(stableInnerFrame);
                 this.Publish("nach driver.SwitchTo().Frame(stableInnerFrame)");
 
-                By by2 = By.XPath("//div/h5[.//span[contains(text(),'Germany')]]"); // liefert h5 mit enthaltenem Element mit Text 'Germany'
-                StableWebElement stableGermanyElement = chromeScraper.WaitForStableWebElement(by2, LocatorCondition.IsVisible);
+                By by2 = By.XPath("//div[@class='external-html' and .//*[contains(text(), 'Germany')]]"); // liefert "Germany\r\n28-Day: 1.003.634 | 8.395\r\nTotals: 7.504.637 | 113.939"
 
-                this.Publish(stableGermanyElement.TagName + " vor Click()");
-                stableGermanyElement.Click();
-                this.Publish(stableGermanyElement.TagName + " nach Click()");
+                IWebElement? stableGermanyElement = null;
+                try
+                {
+                    stableGermanyElement = chromeScraper.GetElement(ExpectedConditions.ElementIsVisible(by2), new TimeSpan(0, 0, CheckCovid19.DEFAULT_SEARCH_TIMEOUT_SECONDS));
+                }
+                catch (Exception ex) when (ex is NoSuchElementException || ex is WebDriverTimeoutException)
+                {
+                    this.Publish($"Exception occurred in SeleniumHelper.SendKeys(): element located by {by2.ToString()} could not be located within {CheckCovid19.DEFAULT_SEARCH_TIMEOUT_SECONDS} seconds.");
+                }
 
-                string tmpString = stableGermanyElement.Text;
+                this.Publish(stableGermanyElement?.TagName + " vor Click()");
+                stableGermanyElement?.Click();
+                this.Publish(stableGermanyElement?.TagName + " nach Click()");
+
+                string? tmpString = stableGermanyElement?.Text;
                 this.Publish(tmpString);
-                if (int.TryParse(tmpString.Replace(" Germany", "").Replace(".", ""), out germanyCases))
+
+                By bySub1 = By.XPath("p[3]"); // liefert "Totals: 7.531.905 | 113.981"
+                IWebElement? stableGermanyTotalsElement = (stableGermanyElement?.FindElement(bySub1));
+
+                string? tmpString2 = stableGermanyTotalsElement?.Text; // "Totals: 7.531.905 | 113.981"
+                if (tmpString2 == null)
+                {
+                    throw new ApplicationException($"Web-Element {bySub1} wurde nicht gefunden.");
+                }
+                this.Publish(tmpString2);
+
+                MatchCollection matchCollection2 = new Regex(@".*?([\d\.]+).*?").Matches(tmpString2);
+                string totalsInfectedString = "";
+                string totalsDeadString = "";
+                if (matchCollection2?.Count > 0 && matchCollection2[0].Groups?.Count > 1)
+                {
+                    totalsInfectedString = matchCollection2[0].Groups[1].Value;
+                }
+                if (matchCollection2?.Count > 1 && matchCollection2[1].Groups?.Count > 1)
+                {
+                    totalsDeadString = matchCollection2[1].Groups[1].Value;
+                }
+                this.Publish(String.Format($"infected: {totalsInfectedString}, dead: {totalsDeadString}"));
+
+                if (int.TryParse(totalsInfectedString.Replace(".", ""), out germanyCases))
                 {
                     this.LogCovidData(String.Format($"JHU_Deutschland Erkrankungen: {germanyCases:N0}"));
                 }
@@ -291,29 +275,7 @@ namespace Vishnu_UserModules
                 {
                     this.LogCovidData(String.Format($"JHU_Deutschland Erkrankungen: - konnte nicht ermittelt werden -"));
                 }
-
-                // By by3 = By.XPath("//div[@id='ember100']"); // findet zwar das Element, aber der Text könnte noch leer sein.
-                /* vor Website-Änderung von JohnsHopkins am 01.12.2020:
-                By by3 = By.XPath("//div[@id='ember100' and .//*[contains(text(), 'Global Deaths')]]"); // liefert 'Global Deaths\r\n15.640'.
-                StableWebElement stableGermanyDeathsElement = chromeScraper.WaitForStableWebElement(by3, LocatorCondition.IsVisible);
-                string tmpString2 = stableGermanyDeathsElement.Text;
-                this.Publish(tmpString2);
-                if (int.TryParse(tmpString2.Replace("Global Deaths" + Environment.NewLine, "").Replace(".", ""), out germanyDeaths))
-                {
-                    this.LogCovidData(String.Format($"JHU_Deutschland Tote: {germanyDeaths:N0}"));
-                }
-                else
-                {
-                    this.LogCovidData(String.Format($"JHU_Deutschland Tote: - konnte nicht ermittelt werden -"));
-                }
-                */
-
-                // nach Website-Änderung von JohnsHopkins am 01.12.2020:
-                By by3 = By.XPath("//div[@id='ember106' and .//*[contains(text(), 'Germany')]]"); // liefert '16.694 deaths\r\nGermany'.
-                StableWebElement stableGermanyDeathsElement = chromeScraper.WaitForStableWebElement(by3, LocatorCondition.IsVisible);
-                string tmpString2 = stableGermanyDeathsElement.Text;
-                this.Publish(tmpString2);
-                if (int.TryParse(tmpString2.Replace(" deaths " + Environment.NewLine + "Germany", "").Replace(".", ""), out germanyDeaths))
+                if (int.TryParse(totalsDeadString.Replace(".", ""), out germanyDeaths))
                 {
                     this.LogCovidData(String.Format($"JHU_Deutschland Tote: {germanyDeaths:N0}"));
                 }
@@ -323,12 +285,15 @@ namespace Vishnu_UserModules
                 }
 
                 this.Publish("LogJohnsHopkins() Ende");
-
             }
         }
 
-        private void evaluateParameters(string paraString)
+        private void evaluateParameters(string? paraString)
         {
+            if (String.IsNullOrEmpty(paraString))
+            {
+                return; 
+            }
             string[] para = paraString.Split('|');
             string covid19InfoFile = String.IsNullOrEmpty(para[0].Trim()) ? @"Covid19_Archive.txt" : para[0].Trim();
             if (!String.IsNullOrEmpty(covid19InfoFile) && covid19InfoFile != this._covid19InfoFile)
@@ -337,7 +302,7 @@ namespace Vishnu_UserModules
             }
             string comment = para.Length > 1 ? para[1].Trim() : "";
 
-            this._checkCovid19_ReturnObject = new CheckCovid19_ReturnObject()
+            this._checkCovid19_ReturnObject = new WebScraperDemo_ReturnObject()
             {
                 Covid19InfoFile = this._covid19InfoFile,
                 Comment = comment
@@ -349,14 +314,17 @@ namespace Vishnu_UserModules
             this._covidLogger?.Dispose();
             string loggingRegexFilter = ""; // Alles wird geloggt (ist der Default).
                                             //string loggingRegexFilter = @"(?:_NOPPES_)"; // Nichts wird geloggt, bzw. nur Zeilen, die "_NOPPES_" enthalten.
-            this._covidLogger = new Logger(this._covid19InfoFile, loggingRegexFilter, false);
-            InfoType[] loggerInfos = new InfoType[] { InfoType.Milestone };
-            this._publisher.RegisterInfoReceiver(this._covidLogger, loggerInfos);
+            if (File.Exists(this._covid19InfoFile))
+            {
+                this._covidLogger = new Logger(this._covid19InfoFile, loggingRegexFilter, false);
+                InfoType[] loggerInfos = new InfoType[] { InfoType.Milestone };
+                this._publisher?.RegisterInfoReceiver(this._covidLogger, loggerInfos);
+            }
         }
 
-        private void OnNodeProgressChanged(string itemsName, int countAll, int countSucceeded, ItemsTypes itemsType)
+        private void OnNodeProgressChanged(int progressPercentage)
         {
-            NodeProgressChanged?.Invoke(null, new CommonProgressChangedEventArgs(itemsName, countAll, countSucceeded, itemsType, null));
+            NodeProgressChanged?.Invoke(null, new ProgressChangedEventArgs(progressPercentage, null));
         }
 
         private bool recordsToResult(List<string> records)
@@ -372,7 +340,7 @@ namespace Vishnu_UserModules
                 foreach (string record in records)
                 {
                     bool recordRtn = true;
-                    this._checkCovid19_ReturnObject.SubResults.SubResults.Add(new CheckCovid19_ReturnObject.SubResult()
+                    this._checkCovid19_ReturnObject?.SubResults?.SubResults?.Add(new WebScraperDemo_ReturnObject.SubResult()
                     {
                         LogicalResult = recordRtn,
                         ResultRecord = record
@@ -386,14 +354,15 @@ namespace Vishnu_UserModules
             return rtn;
         }
 
-        private void Publish(string message)
+        private void Publish(string? message)
         {
-            InfoController.Say("CheckCovid19 " + message);
+            Console.WriteLine(message);
+            // InfoController.Say("CheckCovid19 " + message);
         }
 
         private void LogCovidData(string message)
         {
-            this._publisher.Publish(this, "CheckCovid19 " + message, InfoType.Milestone);
+            this._publisher?.Publish(this, "CheckCovid19 " + message, InfoType.Milestone);
         }
 
         private string syntax(string errorMessage)
@@ -403,7 +372,7 @@ namespace Vishnu_UserModules
                 + Environment.NewLine
                 + "Parameter: Pfad zur Datei mit den Covid19-Infos|Beschreibung"
                 + Environment.NewLine
-                + @"Beispiel: Covid19_Archive.txt|Holt Johns Hopkins- und RKI-Zahlen für Deutschland."
+                + @"Beispiel: Covid19_Archive.txt|Holt Johns Hopkins-Zahlen für Deutschland."
              );
         }
 

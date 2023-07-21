@@ -1,15 +1,14 @@
-﻿using NetEti.Globals;
-using System;
-using System.IO;
+﻿using System.ComponentModel;
 using Vishnu.Interchange;
+using Vishnu_UserModules;
 
-namespace Vishnu_UserModules
+namespace WebScraperDemo
 {
-    class Program
+    internal class Program
     {
         static void Main(string[] args)
         {
-            TreeEvent treeEvent = null;
+            TreeEvent treeEvent = TreeEvent.UndefinedTreeEvent;
             CheckCovid19 demoChecker = new CheckCovid19();
             demoChecker.NodeProgressChanged += SubNodeProgressChanged;
             bool? logicalResult = demoChecker.Run(@"Covid19_Archive.txt|holt Covid-19 Zahlen von Johns Hopkins",
@@ -22,16 +21,16 @@ namespace Vishnu_UserModules
                 default: logicalResultString = "null"; break;
             }
             Console.WriteLine("logical result: {0}, Result: {1}",
-                logicalResultString, demoChecker.ReturnObject.ToString());
+                logicalResultString, demoChecker.ReturnObject?.ToString());
             demoChecker.Dispose();
             Console.ReadLine();
         }
 
         // Wird vom UserChecker bei Veränderung des Verarbeitungsfortschritts aufgerufen.
         // Wann und wie oft der Aufruf erfolgen soll, wird im UserChecker festgelegt.
-        static void SubNodeProgressChanged(object sender, CommonProgressChangedEventArgs args)
+        static void SubNodeProgressChanged(object? sender, ProgressChangedEventArgs args)
         {
-            Console.WriteLine("{0} of {1}", args.CountSucceeded, args.CountAll);
+            Console.WriteLine("{0}", args.ProgressPercentage);
         }
     }
 }

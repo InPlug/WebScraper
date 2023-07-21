@@ -41,7 +41,7 @@ namespace NetEti.WebTools
         /// </summary>
         /// <param name="chromeVersion">Version des aktuell installierten chrome-Browsers oder null.</param>
         /// <returns>Version der aktuell lokal installierten Treibers "chromedriver.exe".</returns>
-        public Task Install(string chromeVersion) => Install(chromeVersion, null, false);
+        public Task Install(string? chromeVersion) => Install(chromeVersion, null, false);
 
         /// <summary>
         /// Prüft die aktuell installierte chrome-Browser-Version und holt den dazu passenden
@@ -60,7 +60,7 @@ namespace NetEti.WebTools
         /// <param name="forceDownload">Bei True wird der Treiber auch dann heruntergeladen, wenn
         /// dieser lokal schon vorhanden ist; Default: false.</param>
         /// <returns>Version der aktuell lokal installierten Treibers "chromedriver.exe".</returns>
-        public Task Install(string chromeVersion, bool forceDownload) => Install(chromeVersion, null, forceDownload);
+        public Task Install(string? chromeVersion, bool forceDownload) => Install(chromeVersion, null, forceDownload);
 
         /// <summary>
         /// Prüft die aktuell installierte chrome-Browser-Version und holt den dazu passenden
@@ -69,7 +69,7 @@ namespace NetEti.WebTools
         /// <param name="chromeVersion">Version des aktuell installierten chrome-Browsers oder null.</param>
         /// <param name="driverPath">Webdriver's containing directory.</param>
         /// <returns>Version der aktuell lokal installierten Treibers "chromedriver.exe".</returns>
-        public Task Install(string chromeVersion, string driverPath) => Install(chromeVersion, driverPath, false);
+        public Task Install(string? chromeVersion, string? driverPath) => Install(chromeVersion, driverPath, false);
 
         /// <summary>
         /// Prüft die aktuell installierte chrome-Browser-Version und holt den dazu passenden
@@ -80,7 +80,7 @@ namespace NetEti.WebTools
         /// <param name="forceDownload">Bei True wird der Treiber auch dann heruntergeladen, wenn
         /// dieser lokal schon vorhanden ist; Default: false.</param>
         /// <returns>Version der aktuell lokal installierten Treibers "chromedriver.exe".</returns>
-        public async Task Install(string chromeVersion, string driverPath, bool forceDownload)
+        public async Task Install(string? chromeVersion, string? driverPath, bool forceDownload)
         {
             // Instructions from https://chromedriver.chromium.org/downloads/version-selection
             //   First, find out which version of Chrome you are using. Let's say you have Chrome 72.0.3626.81.
@@ -90,7 +90,7 @@ namespace NetEti.WebTools
             }
 
             //   Take the Chrome version number, remove the last part, 
-            chromeVersion = chromeVersion.Substring(0, chromeVersion.LastIndexOf('.'));
+            chromeVersion = chromeVersion?.Substring(0, chromeVersion.LastIndexOf('.'));
 
             //   and append the result to URL "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_". 
             //   For example, with Chrome version 72.0.3626.81, you'd get a URL "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_72.0.3626".
@@ -130,17 +130,17 @@ namespace NetEti.WebTools
             {
                 throw new PlatformNotSupportedException("Your operating system is not supported.");
             }
-            string targetPath = driverPath;
+            string? targetPath = driverPath;
             if (String.IsNullOrEmpty(targetPath))
             {
-                targetPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+                targetPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? "";
             }
             targetPath = Path.Combine(targetPath, driverName);
             if (!forceDownload && File.Exists(targetPath))
             {
-                string existingChromeDriverVersion = null;
-                string error = null;
-                Process process = null;
+                string? existingChromeDriverVersion = null;
+                string? error = null;
+                Process? process = null;
                 try
                 {
                     process = Process.Start(
@@ -154,17 +154,20 @@ namespace NetEti.WebTools
                             RedirectStandardError = true,
                         }
                     );
-                    existingChromeDriverVersion = await process.StandardOutput.ReadToEndAsync();
-                    error = await process.StandardError.ReadToEndAsync();
-                    process.WaitForExit();
+                    if (process != null)
+                    {
+                        existingChromeDriverVersion = await process.StandardOutput.ReadToEndAsync();
+                        error = await process.StandardError.ReadToEndAsync();
+                        process.WaitForExit();
+                    }
                 }
                 finally
                 {
-                    process.Dispose();
+                    process?.Dispose();
                 }
                 // expected output is something like "ChromeDriver 88.0.4324.96 (68dba2d8a0b149a1d3afac56fa74648032bcf46b-refs/branch-heads/4324@{#1784})"
                 // the following line will extract the version number and leave the rest
-                existingChromeDriverVersion = existingChromeDriverVersion.Split(' ')[1];
+                existingChromeDriverVersion = existingChromeDriverVersion?.Split(' ')[1];
                 if (chromeDriverVersion == existingChromeDriverVersion)
                 {
                     return;
@@ -192,23 +195,27 @@ namespace NetEti.WebTools
             using (var zipArchive = new ZipArchive(zipFileStream, ZipArchiveMode.Read))
             using (var chromeDriverWriter = new FileStream(targetPath, FileMode.Create))
             {
-                var entry = zipArchive.GetEntry(driverName);
-                Stream chromeDriverStream = null;
+                ZipArchiveEntry? entry = zipArchive.GetEntry(driverName);
+                Stream? chromeDriverStream = null;
                 try
                 {
-                    chromeDriverStream = entry.Open();
-                    await chromeDriverStream.CopyToAsync(chromeDriverWriter);
+                    chromeDriverStream = entry?.Open();
+                    if (chromeDriverStream != null)
+                    {
+                        await chromeDriverStream.CopyToAsync(chromeDriverWriter);
+                    }
                 }
                 finally
                 {
-                    chromeDriverStream.Dispose();
-                }            }
+                    chromeDriverStream?.Dispose();
+                }            
+            }
 
             // on Linux/macOS, you need to add the executable permission (+x) to allow the execution of the chromedriver
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux) || RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
             {
-                string error = null;
-                Process process = null;
+                string? error = null;
+                Process? process = null;
                 try
                 {
                     process = Process.Start(
@@ -222,12 +229,15 @@ namespace NetEti.WebTools
                             RedirectStandardError = true,
                         }
                     );
-                    error = await process.StandardError.ReadToEndAsync();
-                    process.WaitForExit();
+                    if (process != null)
+                    {
+                        error = await process.StandardError.ReadToEndAsync();
+                        process.WaitForExit();
+                    }
                 }
                 finally
                 {
-                    process.Dispose();
+                    process?.Dispose();
                 }
                 if (!string.IsNullOrEmpty(error))
                 {
@@ -240,26 +250,27 @@ namespace NetEti.WebTools
         /// Holt die Version des aktuell installierten chrome-Browsers aus der Registry.
         /// </summary>
         /// <returns>Version der aktuell lokal installierten Treibers "chromedriver.exe".</returns>
-        public async Task<string> GetChromeVersion()
+        public async Task<string?> GetChromeVersion()
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
-                string chromePath = (string)Registry.GetValue("HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\chrome.exe", null, null);
+                string? chromePath
+                    = (string?)Registry.GetValue("HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\chrome.exe", null, null);
                 if (chromePath == null)
                 {
                     throw new Exception("Google Chrome not found in registry");
                 }
 
-                var fileVersionInfo = FileVersionInfo.GetVersionInfo(chromePath);
-                return fileVersionInfo.FileVersion;
+                FileVersionInfo? fileVersionInfo = FileVersionInfo.GetVersionInfo(chromePath);
+                return fileVersionInfo?.FileVersion;
             }
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
                 try
                 {
-                    string output = null;
-                    string error = null;
-                    Process process = null;
+                    string? output = null;
+                    string? error = null;
+                    Process? process = null;
                     try
                     {
                         process = Process.Start(
@@ -273,13 +284,16 @@ namespace NetEti.WebTools
                                 RedirectStandardError = true,
                             }
                         );
-                        output = await process.StandardOutput.ReadToEndAsync();
-                        error = await process.StandardError.ReadToEndAsync();
-                        process.WaitForExit();
+                        if (process != null)
+                        {
+                            output = await process.StandardOutput.ReadToEndAsync();
+                            error = await process.StandardError.ReadToEndAsync();
+                            process.WaitForExit();
+                        }
                     }
                     finally
                     {
-                        process.Dispose();
+                        process?.Dispose();
                     }
                     if (!string.IsNullOrEmpty(error))
                     {
@@ -297,9 +311,9 @@ namespace NetEti.WebTools
             {
                 try
                 {
-                    string output = null;
-                    string error = null;
-                    Process process = null;
+                    string? output = null;
+                    string? error = null;
+                    Process? process = null;
                     try
                     {
                         process = Process.Start(
@@ -313,19 +327,22 @@ namespace NetEti.WebTools
                                 RedirectStandardError = true,
                             }
                         );
-                        output = await process.StandardOutput.ReadToEndAsync();
-                        error = await process.StandardError.ReadToEndAsync();
-                        process.WaitForExit();
+                        if (process != null)
+                        {
+                            output = await process.StandardOutput.ReadToEndAsync();
+                            error = await process.StandardError.ReadToEndAsync();
+                            process.WaitForExit();
+                        }
                     }
                     finally
                     {
-                        process.Dispose();
+                        process?.Dispose();
                     }
                     if (!string.IsNullOrEmpty(error))
                     {
                         throw new Exception(error);
                     }
-                    output = output.Replace("Google Chrome ", "");
+                    output = output?.Replace("Google Chrome ", "");
                     return output;
                 }
                 catch (Exception ex)
@@ -341,7 +358,7 @@ namespace NetEti.WebTools
 
         private void killChromedriverZombies()
         {
-            Process process = Process.Start(
+            Process? process = Process.Start(
                 new ProcessStartInfo
                 {
                     FileName = "taskkill",
@@ -352,9 +369,9 @@ namespace NetEti.WebTools
                     RedirectStandardError = true,
                 }
             );
-            if (!process.WaitForExit(500))
+            if (process?.WaitForExit(500) != true)
             {
-                process.Kill();
+                process?.Kill();
                 Thread.Sleep(500);
             }
             /*

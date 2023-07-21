@@ -1,7 +1,5 @@
 ﻿using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
-using OpenQA.Selenium.Support.UI;
-using SeleniumExtras.WaitHelpers;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -29,14 +27,20 @@ namespace NetEti.WebTools
         /// Constructor - takes a website url and starts the WebDriver at the current directory.
         /// </summary>
         /// <param name="url">The complete website url including https, etc.</param>
-        public ChromeScraper(string url) : this(url, Directory.GetCurrentDirectory()) { }
+        /// <param name="chromeOptions">Specific ChromeOptions or null (default: null).</param>
+        /// <param name="quiet">True (default): no browser-window will be opened and no messages issued.</param>
+        public ChromeScraper(string? url, ChromeOptions? chromeOptions=null, bool quiet=true)
+            : this(url, Directory.GetCurrentDirectory(), chromeOptions, quiet) { }
 
         /// <summary>
         /// Constructor - takes a website url and starts the WebDriver at the given driverPath.
         /// </summary>
         /// <param name="url">The complete website url including https, etc.</param>
         /// <param name="driverPath">Webdriver's containing directory.</param>
-        public ChromeScraper(string url, string driverPath) : base(url, driverPath) { }
+        /// <param name="chromeOptions">Specific ChromeOptions or null (default: null).</param>
+        /// <param name="quiet">True (default): no browser-window will be opened and no messages issued.</param>
+        public ChromeScraper(string? url, string? driverPath, ChromeOptions? chromeOptions=null, bool quiet=true)
+            : base(url, driverPath, (DriverOptions?)chromeOptions, quiet) { }
 
         /// <summary>
         /// Constructor - takes a website url and starts the WebDriver at the given driverPath.
@@ -44,24 +48,36 @@ namespace NetEti.WebTools
         /// <param name="url">The complete website url including https, etc.</param>
         /// <param name="driverPath">Webdriver's containing directory.</param>
         /// <param name="pageLoadTimeoutSeconds">Webdriver page-load-timeout, default = 10 (seconds).</param>
-        public ChromeScraper(string url, string driverPath, int pageLoadTimeoutSeconds) : base(url, driverPath, pageLoadTimeoutSeconds) { }
+        /// <param name="chromeOptions">Specific ChromeOptions or null (default: null).</param>
+        /// <param name="quiet">True (default): no browser-window will be opened and no messages issued.</param>
+        public ChromeScraper(string? url, string driverPath, int pageLoadTimeoutSeconds, ChromeOptions? chromeOptions=null,  bool quiet=true)
+            : base(url, driverPath, pageLoadTimeoutSeconds, (DriverOptions?)chromeOptions, quiet) { }
 
         /// <summary>
         /// Instantiates the concrete Driver (chromedriver.exe here).
         /// </summary>
         /// <param name="driverPath">Webdriver's containing directory.</param>
-        protected override async Task SetupDriverInstance(string driverPath)
+        /// <param name="options">Specific DriverOptions or null (default: null).</param>
+        protected override async Task SetupDriverInstance(string? driverPath, DriverOptions? options)
         {
             await InstallChromeDriver(driverPath);
 
             ChromeDriverService service = ChromeDriverService.CreateDefaultService(driverPath);
             service.SuppressInitialDiagnosticInformation = true;
             service.HideCommandPromptWindow = true;
-            ChromeOptions chromeOptions = new ChromeOptions();
-            chromeOptions.AddArguments(new List<string>() {
+            ChromeOptions chromeOptions = (ChromeOptions?)options ?? new ChromeOptions();
+            if (this.Quiet)
+            {
+                chromeOptions.AddArguments(new List<string>() {
                  "headless", "no-sandbox", "disable-gpu" /* unsatisfactory: "log-level=3"*, senseless: "--silent" "log-level=OFF" */
+                });
+            }
+            else
+            {
+                chromeOptions.AddArguments(new List<string>() {
+                 "--start-maximized", "--ignore-certificate-errors", "--disable-popup-blocking", "--incognito"
             });
-
+            }
             this.WebDriver = new ChromeDriver(service, chromeOptions);
         }
 
@@ -89,7 +105,7 @@ namespace NetEti.WebTools
 
         private static bool _isChromeDriverInstalled = false;
 
-        private static async Task InstallChromeDriver(string workingDirectory = null)
+        private static async Task InstallChromeDriver(string? workingDirectory = null)
         {
             if (_isChromeDriverInstalled)
             {

@@ -60,24 +60,35 @@ namespace NetEti.WebTools
         public const int DEFAULT_PAGE_LOAD_TIMEOUT_SECONDS = 10;
 
         /// <summary>
+        /// True (default): no browser-window will be opened and no messages issued.
+        /// </summary>
+        public bool Quiet { get; private set; }
+
+        /// <summary>
         /// Constructor - initializes the WebDriver.
         /// </summary>
         /// <param name="driverPath">Webdriver's containing directory.</param>
-        public WebScraperBase(string driverPath) : this(null, driverPath, DEFAULT_PAGE_LOAD_TIMEOUT_SECONDS) { }
+        /// <param name="options">Specific DriverOptions or null (default: null).</param>
+        /// <param name="quiet">True (default): no browser-window will be opened and no messages issued.</param>
+        public WebScraperBase(string? driverPath, DriverOptions? options, bool quiet=true) : this(null, driverPath, DEFAULT_PAGE_LOAD_TIMEOUT_SECONDS, options, quiet) { }
 
         /// <summary>
         /// Constructor - initializes the WebDriver with a given timeout for page-loading.
         /// </summary>
         /// <param name="driverPath">Webdriver's containing directory.</param>
         /// <param name="pageLoadTimeoutSeconds">Webdriver page-load-timeout, default = 10 (seconds).</param>
-        public WebScraperBase(string driverPath, int pageLoadTimeoutSeconds) : this(null, driverPath, pageLoadTimeoutSeconds) { }
+        /// <param name="options">Specific DriverOptions or null (default: null).</param>
+        /// <param name="quiet">True (default): no browser-window will be opened and no messages issued.</param>
+        public WebScraperBase(string? driverPath, int pageLoadTimeoutSeconds, DriverOptions? options, bool quiet=true) : this(null, driverPath, pageLoadTimeoutSeconds, options, quiet) { }
 
         /// <summary>
         /// Constructor - initializes the WebDriver and navigates to the given url.
         /// </summary>
         /// <param name="url">The complete website url including https, etc.</param>
         /// <param name="driverPath">Webdriver's containing directory.</param>
-        public WebScraperBase(string url, string driverPath) : this(url, driverPath, DEFAULT_PAGE_LOAD_TIMEOUT_SECONDS) { }
+        /// <param name="options">Specific DriverOptions or null (default: null).</param>
+        /// <param name="quiet">True (default): no browser-window will be opened and no messages issued.</param>
+        public WebScraperBase(string? url, string? driverPath, DriverOptions? options, bool quiet=true) : this(url, driverPath, DEFAULT_PAGE_LOAD_TIMEOUT_SECONDS, options, quiet) { }
 
         /// <summary>
         /// Constructor - initializes the WebDriver, sets the timeout for page-loading and navigates to the given url.
@@ -85,10 +96,13 @@ namespace NetEti.WebTools
         /// <param name="url">The complete website url including https, etc.</param>
         /// <param name="driverPath">Webdriver's containing directory.</param>
         /// <param name="pageLoadTimeoutSeconds">Webdriver page-load-timeout, default = 10 (seconds).</param>
-        public WebScraperBase(string url, string driverPath, int pageLoadTimeoutSeconds)
+        /// <param name="options">Specific DriverOptions or null (default: null).</param>
+        /// <param name="quiet">True (default): no browser-window will be opened and no messages issued.</param>
+        public WebScraperBase(string? url, string? driverPath, int pageLoadTimeoutSeconds, DriverOptions? options, bool quiet = true)
         {
-            this.SetupDriver(driverPath);
-            if (!String.IsNullOrEmpty(url))
+            this.Quiet = quiet;
+            this.SetupDriver(driverPath, options);
+            if (!String.IsNullOrEmpty(url) && this.WebDriver != null)
             {
                 this.WebDriver.Manage().Timeouts().PageLoad = TimeSpan.FromSeconds(pageLoadTimeoutSeconds);
                 this.WebDriver.Navigate().GoToUrl(url);
@@ -98,26 +112,31 @@ namespace NetEti.WebTools
         /// <summary>
         /// Browser controlling instance of IWebDriver.
         /// </summary>
-        public IWebDriver WebDriver { get; set; }
+        public IWebDriver? WebDriver { get; set; }
 
         /// <summary>
         /// Instantiates the concrete Driver (e.g. ChromeDriver), DefaultWait and FluentWait.
         /// Must be overwritten.
         /// </summary>
         /// <param name="driverPath">Webdriver's containing directory.</param>
-        protected abstract Task SetupDriverInstance(string driverPath);
+        /// <param name="options">Specific DriverOptions or null (default: null).</param>
+        protected abstract Task SetupDriverInstance(string? driverPath, DriverOptions? options);
 
         /// <summary>
         /// Disposes an eventually previously instantiated driver and calls SetupDriverInstance(url)
         /// Sets up ImplicitWait and FluentWait. Navigates to the given url.
         /// </summary>
         /// <param name="driverPath">Webdriver's containing directory.</param>
-        public void SetupDriver(string driverPath)
+        /// <param name="options">Specific DriverOptions or null (default: null).</param>
+        public void SetupDriver(string? driverPath, DriverOptions? options)
         {
             this.WebDriver?.Dispose();
-            Task task = this.SetupDriverInstance(driverPath);
+            Task task = this.SetupDriverInstance(driverPath, options);
             task.Wait();
-            this.WebDriver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(0); // no implicite waiting
+            if (this.WebDriver != null)
+            {
+                this.WebDriver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(0); // no implicite waiting
+            }
         }
 
         /// <summary>
@@ -127,19 +146,20 @@ namespace NetEti.WebTools
         public void Load(Uri uri)
         {
             var absoluteUri = uri.AbsoluteUri;
-            this.WebDriver.Navigate().GoToUrl(uri);
+            this.WebDriver?.Navigate().GoToUrl(uri);
         }
 
         /// <summary>
         /// Tries to instantiate the concrete Driver (e.g. ChromeDriver).
         /// </summary>
         /// <param name="driverPath">Webdriver's containing directory.</param>
+        /// <param name="options">Specific DriverOptions or null (default: null).</param>
         /// <returns>True, if succeeded.</returns>
-        public bool TrySetupDriver(string driverPath)
+        public bool TrySetupDriver(string driverPath, DriverOptions options)
         {
             try
             {
-                this.SetupDriver(driverPath);
+                this.SetupDriver(driverPath, options);
                 return true;
             }
             catch
@@ -156,7 +176,7 @@ namespace NetEti.WebTools
         /// <returns>IWebElement if succesful.</returns>
         public IWebElement GetElement(Func<IWebDriver, IWebElement> waitCondition, TimeSpan maxWaitTime)
         {
-            IWebElement webElement = null;
+            IWebElement? webElement = null;
             try
             {
                 webElement = new WebDriverWait(this.WebDriver, maxWaitTime).Until(waitCondition);
@@ -187,7 +207,8 @@ namespace NetEti.WebTools
         /// </summary>
         protected virtual void Cleanup() 
         {
-            this.WebDriver?.Dispose();
+            // Quit ist der korrekte Weg! this.WebDriver?.Dispose();
+            this.WebDriver?.Quit();
         }
 
         /// <summary>
