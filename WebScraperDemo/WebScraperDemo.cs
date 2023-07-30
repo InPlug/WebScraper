@@ -314,7 +314,7 @@ namespace Vishnu_UserModules
             this._covidLogger?.Dispose();
             string loggingRegexFilter = ""; // Alles wird geloggt (ist der Default).
                                             //string loggingRegexFilter = @"(?:_NOPPES_)"; // Nichts wird geloggt, bzw. nur Zeilen, die "_NOPPES_" enthalten.
-            if (File.Exists(this._covid19InfoFile))
+            if (!String.IsNullOrEmpty(this._covid19InfoFile))
             {
                 this._covidLogger = new Logger(this._covid19InfoFile, loggingRegexFilter, false);
                 InfoType[] loggerInfos = new InfoType[] { InfoType.Milestone };

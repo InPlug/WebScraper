@@ -6,8 +6,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <Copyright>Copyright © $(Authors) 2020-2023</Copyright>
-    <AssemblyVersion>7.0.1.1</AssemblyVersion>
-    <FileVersion>7.0.1.1</FileVersion>
+    <AssemblyVersion>7.0.1.2</AssemblyVersion>
+    <FileVersion>7.0.1.2</FileVersion>
     <Title>$(AssemblyName) - Demoprogramm</Title>
     <Description>$(AssemblyName) - Demoprogramm</Description>
     <Authors>Erik Nagel</Authors>

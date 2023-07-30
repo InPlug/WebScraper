@@ -20,6 +20,7 @@ namespace NetEti.WebTools
     ///
     /// 28.11.2020 Erik Nagel: created.
     /// 28.08.2022 Erik Nagel: revised for selenium 4.
+    /// 
     /// </remarks>
     public class ChromeScraper: WebScraperBase
     {
@@ -107,6 +108,28 @@ namespace NetEti.WebTools
 
         private static async Task InstallChromeDriver(string? workingDirectory = null)
         {
+            // Theoretically obsolet since Selenium.WebDriver 4.6.0.
+            // But during the implicite call of the new selenium-manager.exe a
+            // short flicker of a console window appears.
+            // Therefore the existing implementation is retained.
+            // Because google didn't issue a downloadble driver for chrome 115 (see following log-extracts),
+            // ChromeDriverInstaller had to be extended anywhere (see ChromeDriverInstaller for details).
+            // Log:
+            //     selenium-manager.exe --browser chrome --clear-cache --clear-metadata --trace
+            //     ...
+            //     DEBUG   The version of chrome is 115.0.5790.110
+            //     ...
+            //     DEBUG   Detected browser: chrome 115
+            //     ...
+            //     WARN    Error getting version of chromedriver 115. Retrying with chromedriver 114 (attempt 1/5)
+            //     DEBUG   Reading chromedriver version from https://chromedriver.storage.googleapis.com/LATEST_RELEASE_114
+            //     TRACE   Writing metadata to C:\Users\micro\.cache\selenium\selenium-manager.json
+            //     DEBUG   Required driver: chromedriver 114.0.5735.90
+            //     ...
+            //     TRACE   Downloading https://chromedriver.storage.googleapis.com/114.0.5735.90/chromedriver_win32.zip to temporal folder "C:\\Users\\micro\\AppData\\Local\\Temp\\selenium-managerO9hQVc"
+            //     ...
+            //     INFO    C:\Users\micro\.cache\selenium\chromedriver\win32\114.0.5735.90\chromedriver.exe
+            
             if (_isChromeDriverInstalled)
             {
                 return;
@@ -125,8 +148,9 @@ namespace NetEti.WebTools
 
             await chromeDriverInstaller.Install(chromeVersion, workingDirectory);
             // Console.WriteLine("ChromeDriver installed");
-
             _isChromeDriverInstalled = true;
+            
+            // await Task.Run(() => { Task.Delay(1); }); // just to suppress "no await"-warning.
         }
 
     }

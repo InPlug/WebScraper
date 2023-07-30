@@ -1,0 +1,142 @@
+DWS_Fondswerte: One or more errors occurred. (Unable to obtain chromedriver.exe using Selenium Manager; For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors/driver_location)
+Sartorius_Aktienwerte: One or more errors occurred. (Unable to obtain chromedriver.exe using Selenium Manager; For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors/driver_location)
+Swiss_Sustainable_Fondswerte: One or more errors occurred. (Unable to obtain chromedriver.exe using Selenium Manager; For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors/driver_location)
+BASF_Aktienwerte: One or more errors occurred. (Unable to obtain chromedriver.exe using Selenium Manager; For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors/driver_location)
+Robeco_Water_Fondswerte: One or more errors occurred. (Unable to obtain chromedriver.exe using Selenium Manager; For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors/driver_location)
+OekoWorld_Fondswerte: One or more errors occurred. (Unable to obtain chromedriver.exe using Selenium Manager; For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors/driver_location)
+Teamviewer_Aktienwerte: One or more errors occurred. (Unable to obtain chromedriver.exe using Selenium Manager; For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors/driver_location)
+
+
+nächster Lauf: 29.07.2023 20:08:49
+letztes Ergebnis: BASF_Aktienwerte: System.AggregateException: One or more errors occurred. (Unable to obtain chromedriver.exe using Selenium Manager; For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors/driver_location)
+ ---> OpenQA.Selenium.NoSuchDriverException: Unable to obtain chromedriver.exe using Selenium Manager; For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors/driver_location
+ ---> System.TypeInitializationException: The type initializer for 'OpenQA.Selenium.SeleniumManager' threw an exception.
+ ---> OpenQA.Selenium.WebDriverException: Unable to locate or obtain Selenium Manager binary at C:\Users\micro\Documents\Tools\openVishnu7\Vishnu.bin\selenium-manager/windows/selenium-manager.exe
+   at OpenQA.Selenium.SeleniumManager..cctor()
+   --- End of inner exception stack trace ---
+   at OpenQA.Selenium.SeleniumManager.DriverPath(DriverOptions options)
+   at OpenQA.Selenium.DriverFinder.VerifyDriverServicePath(DriverService service, DriverOptions options)
+   --- End of inner exception stack trace ---
+   at OpenQA.Selenium.DriverFinder.VerifyDriverServicePath(DriverService service, DriverOptions options)
+   at OpenQA.Selenium.Chromium.ChromiumDriver..ctor(ChromiumDriverService service, ChromiumOptions options, TimeSpan commandTimeout)
+   at OpenQA.Selenium.Chrome.ChromeDriver..ctor(ChromeDriverService service, ChromeOptions options, TimeSpan commandTimeout)
+   at OpenQA.Selenium.Chrome.ChromeDriver..ctor(ChromeDriverService service, ChromeOptions options)
+   at NetEti.WebTools.ChromeScraper.SetupDriverInstance(String driverPath, DriverOptions options)
+   --- End of inner exception stack trace ---
+   at System.Threading.Tasks.Task.ThrowIfExceptional(Boolean includeTaskCanceledExceptions)
+   at System.Threading.Tasks.Task.Wait(Int32 millisecondsTimeout, CancellationToken cancellationToken)
+   at System.Threading.Tasks.Task.Wait()
+   at NetEti.WebTools.WebScraperBase.SetupDriver(String driverPath, DriverOptions options)
+   at NetEti.WebTools.WebScraperBase..ctor(String url, String driverPath, Int32 pageLoadTimeoutSeconds, DriverOptions options, Boolean quiet)
+   at NetEti.WebTools.WebScraperBase..ctor(String url, String driverPath, DriverOptions options, Boolean quiet)
+   at NetEti.WebTools.ChromeScraper..ctor(String url, String driverPath, ChromeOptions chromeOptions, Boolean quiet)
+   at BASF_Checker.BASF_Checker.EvaluateShareSite()
+   at BASF_Checker.BASF_Checker.Work(TreeEvent source)
+   at Vishnu_UserModules.ShareCheckerBase.Run(Object checkerParameters, TreeParameters treeParameters, TreeEvent source)
+   at Vishnu_UserModules.CheckerHistoryLogger.Work(Object checkerParameters, TreeParameters treeParameters, TreeEvent source)
+   at Vishnu_UserModules.CheckerHistoryLogger.Run(Object checkerParameters, TreeParameters treeParameters, TreeEvent source)
+   at LogicalTaskTree.CheckerShell.runIt(Object checkerParameters, TreeParameters treeParameters, TreeEvent source) in C:\Users\micro\Documents\private4\WPF\openVishnu7\VishnuHome\Vishnu\LogicalTaskTree\CheckerShell.cs:line 449
+   at LogicalTaskTree.CheckerShell.Run(Object checkerParameters, TreeParameters treeParameters, TreeEvent source) in C:\Users\micro\Documents\private4\WPF\openVishnu7\VishnuHome\Vishnu\LogicalTaskTree\CheckerShell.cs:line 60
+   at LogicalTaskTree.SingleNode.DoRun(TreeEvent source) in C:\Users\micro\Documents\private4\WPF\openVishnu7\VishnuHome\Vishnu\LogicalTaskTree\SingleNode.cs:line 555
+   
+
+C:\Users\micro\Documents\Tools\openVishnu7\Vishnu.bin\selenium-manager\windows>
+selenium-manager.exe --help
+selenium-manager 1.0.0-M3
+Selenium Manager is a CLI tool that automatically manages the browser/driver infrastructure required by Selenium.
+
+
+Usage: selenium-manager.exe [OPTIONS]
+Options:
+      --browser <BROWSER>
+          Browser name (chrome, firefox, edge, iexplorer, safari, or safaritp)
+      --driver <DRIVER>
+          Driver name (chromedriver, geckodriver, msedgedriver, IEDriverServer, or safaridriver)
+      --driver-version <DRIVER_VERSION>
+          Driver version (e.g., 106.0.5249.61, 0.31.0, etc.)
+      --browser-version <BROWSER_VERSION>
+          Major browser version (e.g., 105, 106, etc. Also: beta, dev, canary -or nightly- is accepted)
+      --browser-path <BROWSER_PATH>
+          Browser path (absolute) for browser version detection (e.g., /usr/bin/google-chrome, "/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome", "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe")
+      --output <OUTPUT>
+          Output type: LOGGER (using INFO, WARN, etc.), JSON (custom JSON notation), or SHELL (Unix-like) [default: LOGGER]
+      --proxy <PROXY>
+          HTTP proxy for network connection (e.g., https://myproxy.net:8080)
+      --timeout <TIMEOUT>
+          Timeout for network requests (in seconds) [default: 180]
+      --driver-ttl <DRIVER_TTL>
+          Driver TTL (time-to-live) [default: 86400]
+      --browser-ttl <BROWSER_TTL>
+          Browser TTL (time-to-live) [default: 0]
+      --clear-cache
+          Clear cache folder (~/.cache/selenium)
+      --clear-metadata
+          Clear metadata file (~/.cache/selenium/selenium-manager.json)
+      --debug
+          Display DEBUG messages
+      --trace
+          Display TRACE messages
+  -h, --help
+          Print help
+  -V, --version
+          Print version
+
+C:\Users\micro\Documents\Tools\openVishnu7\Vishnu.bin\selenium-manager\windows>
+selenium-manager.exe --debug --browser chrome
+DEBUG   Using shell command to find out chrome version
+DEBUG   Running command: "set PFILES=%PROGRAMFILES: (x86)=%&& wmic datafile where name='!PFILES:\\=\\\\!\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe' get Version /value"
+DEBUG   Output: "\r\r\n\r\r\nVersion=115.0.5790.110\r\r\n\r\r\n\r\r\n\r"
+DEBUG   The version of chrome is 115.0.5790.110
+DEBUG   Detected browser: chrome 115
+DEBUG   Required driver: chromedriver 114.0.5735.90
+DEBUG   Running command: "chromedriver --version"
+DEBUG   Output: "ChromeDriver 103.0.5060.134 (8ec6fce403b3feb0869b0732eda8bd95011d333c-refs/branch-heads/5060@{#1262})"
+DEBUG   Running command: "where chromedriver"
+DEBUG   Output: "C:\\Users\\micro\\Documents\\private4\\WPF\\Vishnu_Root\\NetEti\\ChordSheetCreator\\ChordSheetGenerator\\bin\\Debug\\chromedriver.exe\r\nc:\\Users\\micro\\Documents\\private4\\WPF\\Vishnu_Root\\NetEti\\H2P\\H2P\\bin\\Debug\\chromedriver.exe"
+WARN    Incompatible release of chromedriver (version 103.0.5060.134) detected in PATH: C:\Users\micro\Documents\private4\WPF\Vishnu_Root\NetEti\ChordSheetCreator\ChordSheetGenerator\bin\Debug\chromedriver.exe
+DEBUG   chromedriver 114.0.5735.90 already in the cache
+INFO    C:\Users\micro\.cache\selenium\chromedriver\win32\114.0.5735.90\chromedriver.exe
+
+selenium-manager.exe --browser chrome --clear-cache
+WARN    Error getting version of chromedriver 115. Retrying with chromedriver 114 (attempt 1/5)
+WARN    Incompatible release of chromedriver (version 103.0.5060.134) detected in PATH: C:\Users\micro\Documents\private4\WPF\Vishnu_Root\NetEti\ChordSheetCreator\ChordSheetGenerator\bin\Debug\chromedriver.exe
+INFO    C:\Users\micro\.cache\selenium\chromedriver\win32\114.0.5735.90\chromedriver.exe
+(nochmal ohne internetverbindung)
+selenium-manager.exe --browser chrome --clear-cache --clear-metadata
+WARN    Error deleting metadata file: Das System kann die angegebene Datei nicht finden. (os error 2)
+ERROR   error sending request for url (https://chromedriver.storage.googleapis.com/LATEST_RELEASE_115): error trying to connect: dns error: Der angegebene Host ist unbekannt. (os error 11001)
+
+				// selenium-manager.exe --browser chrome --clear-cache --clear-metadata --trace
+				// DEBUG   Clearing cache at: C:\Users\micro\.cache\selenium
+				// DEBUG   Deleting metadata file C:\Users\micro\.cache\selenium\selenium-manager.json
+				// WARN    Error deleting metadata file: Das System kann die angegebene Datei nicht finden. (os error 2)
+				// TRACE   Reading metadata from C:\Users\micro\.cache\selenium\selenium-manager.json
+				// TRACE   Metadata file does not exist. Creating a new one
+				// DEBUG   Using shell command to find out chrome version
+				// DEBUG   Running command: "set PFILES=%PROGRAMFILES: (x86)=%&& wmic datafile where name='!PFILES:\\=\\\\!\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe' get Version /value"
+				// DEBUG   Output: "\r\r\n\r\r\nVersion=115.0.5790.110\r\r\n\r\r\n\r\r\n\r"
+				// DEBUG   The version of chrome is 115.0.5790.110
+				// TRACE   Writing metadata to C:\Users\micro\.cache\selenium\selenium-manager.json
+				// DEBUG   Detected browser: chrome 115
+				// TRACE   Reading metadata from C:\Users\micro\.cache\selenium\selenium-manager.json
+				// DEBUG   Reading chromedriver version from https://chromedriver.storage.googleapis.com/LATEST_RELEASE_115
+				// DEBUG   Error parsing version: <?xml version='1.0' encoding='UTF-8'?><Error><Code>NoSuchKey</Code><Message>The specified key does not exist.</Message><Details>No such object: chromedriver/LATEST_RELEASE_115</Details></Error>
+				// WARN    Error getting version of chromedriver 115. Retrying with chromedriver 114 (attempt 1/5)
+				// DEBUG   Reading chromedriver version from https://chromedriver.storage.googleapis.com/LATEST_RELEASE_114
+				// TRACE   Writing metadata to C:\Users\micro\.cache\selenium\selenium-manager.json
+				// DEBUG   Required driver: chromedriver 114.0.5735.90
+				// DEBUG   Running command: "chromedriver --version"
+				// DEBUG   Output: "ChromeDriver 103.0.5060.134 (8ec6fce403b3feb0869b0732eda8bd95011d333c-refs/branch-heads/5060@{#1262})"
+				// DEBUG   Running command: "where chromedriver"
+				// DEBUG   Output: "C:\\Users\\micro\\Documents\\private4\\WPF\\Vishnu_Root\\NetEti\\ChordSheetCreator\\ChordSheetGenerator\\bin\\Debug\\chromedriver.exe\r\nc:\\Users\\micro\\Documents\\private4\\WPF\\Vishnu_Root\\NetEti\\H2P\\H2P\\bin\\Debug\\chromedriver.exe"
+				// WARN    Incompatible release of chromedriver (version 103.0.5060.134) detected in PATH: C:\Users\micro\Documents\private4\WPF\Vishnu_Root\NetEti\ChordSheetCreator\ChordSheetGenerator\bin\Debug\chromedriver.exe
+				// DEBUG   Driver URL: https://chromedriver.storage.googleapis.com/114.0.5735.90/chromedriver_win32.zip
+				// TRACE   Downloading https://chromedriver.storage.googleapis.com/114.0.5735.90/chromedriver_win32.zip to temporal folder "C:\\Users\\micro\\AppData\\Local\\Temp\\selenium-managerO9hQVc"
+				// TRACE   File to be downloaded: chromedriver_win32.zip
+				// TRACE   Temporal folder for driver package: C:\Users\micro\AppData\Local\Temp\selenium-managerO9hQVc\chromedriver_win32.zip
+				// TRACE   The detected extension of the compressed file is zip
+				// TRACE   Unzipping file to C:\Users\micro\.cache\selenium\chromedriver\win32\114.0.5735.90\chromedriver.exe
+				// DEBUG   File extracted to C:\Users\micro\.cache\selenium\chromedriver\win32\114.0.5735.90\chromedriver.exe (12273664 bytes)
+				// INFO    C:\Users\micro\.cache\selenium\chromedriver\win32\114.0.5735.90\chromedriver.exe
+
+114.0.5735.90
