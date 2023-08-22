@@ -12,8 +12,8 @@
     <Authors>Erik Nagel</Authors>
     <Company>NetEti</Company>
     <Copyright>Copyright © $(Authors) 2020-2023</Copyright>
-    <AssemblyVersion>7.0.1.2</AssemblyVersion>
-    <FileVersion>7.0.1.2</FileVersion>
+    <AssemblyVersion>7.0.1.3</AssemblyVersion>
+    <FileVersion>7.0.1.3</FileVersion>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -24,8 +24,8 @@
 
   <ItemGroup>
     <PackageReference Include="DotNetSeleniumExtras.WaitHelpers" Version="3.11.0" />
-    <PackageReference Include="Selenium.Support" Version="4.10.0" />
-    <PackageReference Include="Selenium.WebDriver" Version="4.10.0" />
+    <PackageReference Include="Selenium.Support" Version="4.11.0" />
+    <PackageReference Include="Selenium.WebDriver" Version="4.11.0" />
   </ItemGroup>
 
 </Project>

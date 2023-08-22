@@ -1,315 +1,113 @@
-﻿using Microsoft.Win32;
+﻿using Newtonsoft.Json;
 using System;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
-using System.Net;
+using System.Linq;
 using System.Net.Http;
-using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace NetEti.WebTools
 {
     /// <summary>
-    /// Lädt den zur aktuell installierten chrome-Browser-Version passenden Treiber (chromedriver.exe).
-    /// Kopiert die passende "chromedriver.exe" von der google-Webseite, wenn die passende Version
-    /// noch nicht heruntergeladen wurde.
-    /// Author: Niels Swimberghe, vielen Dank dafür.
-    /// Habe seine Lösung nur auf .Net-Framework und ein paar Belange der Vishnu-Verarbeitung
-    /// angepasst, aber ansonsten unverändert übernommen.
-    /// https://swimburger.net/blog/dotnet/download-the-right-chromedriver-version-and-keep-it-up-to-date-on-windows-linux-macos-using-csharp-dotnet
+    /// Loads an actual test-browser and it's corresponding driver
+    /// from https://github.com/GoogleChromeLabs/chrome-for-testing.
+    /// 
+    /// 21.08.2023 Erik Nagel: created.
+    /// 21.08.2023 Erik Nagel: revised for "Chrome for Testing".
     /// </summary>
     public class ChromeDriverInstaller
     {
-        private static readonly HttpClient httpClient = new HttpClient
+        const string BrowserPath = "browser";
+        const string DriverPath = "driver";
+
+        /// <summary>
+        /// Prüft die aktuell installierte chrome-Browser-Version und holt den dazu passenden
+        /// Treiber "chromedriver.exe", wenn dieser noch nicht vorhanden ist.
+        /// </summary>
+        /// <param name="forceDownload">Bei True wird der Treiber auch dann heruntergeladen, wenn
+        /// dieser lokal schon vorhanden ist; Default: false.</param>
+        /// <returns>Version der aktuell lokal installierten Treibers "chromedriver.exe".</returns>
+        public async Task<InstallationInfo?> Install(bool forceDownload)
         {
-            BaseAddress = new Uri("https://chromedriver.storage.googleapis.com/")
-        };
+            // Since v115.0.5763.0 this routine is the appropriate one due to the new "chrome for testing" site,
+            // see https://github.com/GoogleChromeLabs/chrome-for-testing#json-api-endpoints
 
-        /// <summary>
-        /// Prüft die aktuell installierte chrome-Browser-Version und holt den dazu passenden
-        /// Treiber "chromedriver.exe", wenn dieser noch nicht vorhanden ist.
-        /// </summary>
-        /// <returns>Version der aktuell lokal installierten Treibers "chromedriver.exe".</returns>
-        public Task Install() => Install(null, null, false);
+            bool downloadIt = forceDownload;
 
-        /// <summary>
-        /// Prüft die aktuell installierte chrome-Browser-Version und holt den dazu passenden
-        /// Treiber "chromedriver.exe", wenn dieser noch nicht vorhanden ist.
-        /// </summary>
-        /// <param name="chromeVersion">Version des aktuell installierten chrome-Browsers oder null.</param>
-        /// <returns>Version der aktuell lokal installierten Treibers "chromedriver.exe".</returns>
-        public Task Install(string? chromeVersion) => Install(chromeVersion, null, false);
+            ChromeForTestingJsonApiDataContainer chromeForTestingJsonApiDataContainer = await FetchChromeDriverInfos()
+                ?? throw new ApplicationException("Could not retrieve chrome-infos.");
+            string? newVersion = chromeForTestingJsonApiDataContainer.channels?.Stable?.version;
 
-        /// <summary>
-        /// Prüft die aktuell installierte chrome-Browser-Version und holt den dazu passenden
-        /// Treiber "chromedriver.exe", wenn dieser noch nicht vorhanden ist.
-        /// </summary>
-        /// <param name="forceDownload">Bei True wird der Treiber auch dann heruntergeladen, wenn
-        /// dieser lokal schon vorhanden ist; Default: false.</param>
-        /// <returns>Version der aktuell lokal installierten Treibers "chromedriver.exe".</returns>
-        public Task Install(bool forceDownload) => Install(null, null, forceDownload);
-
-        /// <summary>
-        /// Prüft die aktuell installierte chrome-Browser-Version und holt den dazu passenden
-        /// Treiber "chromedriver.exe", wenn dieser noch nicht vorhanden ist.
-        /// </summary>
-        /// <param name="chromeVersion">Version des aktuell installierten chrome-Browsers oder null.</param>
-        /// <param name="forceDownload">Bei True wird der Treiber auch dann heruntergeladen, wenn
-        /// dieser lokal schon vorhanden ist; Default: false.</param>
-        /// <returns>Version der aktuell lokal installierten Treibers "chromedriver.exe".</returns>
-        public Task Install(string? chromeVersion, bool forceDownload) => Install(chromeVersion, null, forceDownload);
-
-        /// <summary>
-        /// Prüft die aktuell installierte chrome-Browser-Version und holt den dazu passenden
-        /// Treiber "chromedriver.exe", wenn dieser noch nicht vorhanden ist.
-        /// </summary>
-        /// <param name="chromeVersion">Version des aktuell installierten chrome-Browsers oder null.</param>
-        /// <param name="driverPath">Webdriver's containing directory.</param>
-        /// <returns>Version der aktuell lokal installierten Treibers "chromedriver.exe".</returns>
-        public Task Install(string? chromeVersion, string? driverPath) => Install(chromeVersion, driverPath, false);
-
-        /// <summary>
-        /// Prüft die aktuell installierte chrome-Browser-Version und holt den dazu passenden
-        /// Treiber "chromedriver.exe", wenn dieser noch nicht vorhanden ist.
-        /// </summary>
-        /// <param name="chromeVersion">Version des aktuell installierten chrome-Browsers oder null.</param>
-        /// <param name="driverPath">Webdriver's containing directory.</param>
-        /// <param name="forceDownload">Bei True wird der Treiber auch dann heruntergeladen, wenn
-        /// dieser lokal schon vorhanden ist; Default: false.</param>
-        /// <returns>Version der aktuell lokal installierten Treibers "chromedriver.exe".</returns>
-        public async Task Install(string? chromeVersion, string? driverPath, bool forceDownload)
-        {
-            // Instructions from https://chromedriver.chromium.org/downloads/version-selection
-            //   First, find out which version of Chrome you are using. Let's say you have Chrome 72.0.3626.81.
-            if (chromeVersion == null)
-            {
-                chromeVersion = await GetChromeVersion();
-            }
-            // Because google didn't issue a downloadble driver for chrome 115 (see following log-extracts),
-            // ChromeDriverInstaller had to be extended.
-            // Log:
-            //     selenium-manager.exe --browser chrome --clear-cache --clear-metadata --trace
-            //     ...
-            //     DEBUG   The version of chrome is 115.0.5790.110
-            //     ...
-            //     DEBUG   Detected browser: chrome 115
-            //     ...
-            //     WARN    Error getting version of chromedriver 115. Retrying with chromedriver 114 (attempt 1/5)
-            //     DEBUG   Reading chromedriver version from https://chromedriver.storage.googleapis.com/LATEST_RELEASE_114
-            //     TRACE   Writing metadata to C:\Users\micro\.cache\selenium\selenium-manager.json
-            //     DEBUG   Required driver: chromedriver 114.0.5735.90
-            //     ...
-            //     TRACE   Downloading https://chromedriver.storage.googleapis.com/114.0.5735.90/chromedriver_win32.zip to temporal folder "C:\\Users\\micro\\AppData\\Local\\Temp\\selenium-managerO9hQVc"
-            //     ...
-            //     INFO    C:\Users\micro\.cache\selenium\chromedriver\win32\114.0.5735.90\chromedriver.exe
-
-            // BaseAddress = new Uri("https://chromedriver.storage.googleapis.com/")
-            // Take the Chrome version number, remove the last part.
-            string? chromeDriverVersion = null;
-            string? previousChromeVersion;
-            int attempts = 0;
-            while (chromeDriverVersion == null && attempts++ < 5)
-            {
-                previousChromeVersion = chromeVersion;
-                if (chromeVersion?.Contains('.') == true)
-                {
-                    chromeVersion = chromeVersion?.Substring(0, chromeVersion.LastIndexOf('.'));
-                }
-                else
-                {
-                    chromeVersion = (Convert.ToInt32(previousChromeVersion) - 1).ToString();
-                }
-                chromeDriverVersion = await GetLatestAppropriateChromeDriverVersion(chromeVersion);
-            }
-            if (String.IsNullOrEmpty(chromeDriverVersion))
-            {
-                throw new Exception($"ChromeDriver version not found for Chrome version {chromeVersion}");
-            }
-
-            string zipName;
-            string driverName;
+            string? browserLink;
+            string? driverLink;
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
-                zipName = "chromedriver_win32.zip";
-                driverName = "chromedriver.exe";
+                browserLink = chromeForTestingJsonApiDataContainer.channels?.Stable?.downloads?.chrome?
+                    .ToList().Where(i => (i.platform == "win64")).First().url;
+                driverLink = chromeForTestingJsonApiDataContainer?.channels?.Stable?.downloads?.chromedriver?
+                    .ToList().Where(i => (i.platform == "win64")).First().url;
             }
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
-                zipName = "chromedriver_linux64.zip";
-                driverName = "chromedriver";
+                browserLink = chromeForTestingJsonApiDataContainer.channels?.Stable?.downloads?.chrome?
+                    .ToList().Where(i => (i.platform == "linux64")).First().url;
+                driverLink = chromeForTestingJsonApiDataContainer.channels?.Stable?.downloads?.chromedriver?
+                    .ToList().Where(i => (i.platform == "linux64")).First().url;
             }
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
             {
-                zipName = "chromedriver_mac64.zip";
-                driverName = "chromedriver";
+                browserLink = chromeForTestingJsonApiDataContainer.channels?.Stable?.downloads?.chrome?
+                    .ToList().Where(i => (i.platform == "mac-x64")).First().url;
+                driverLink = chromeForTestingJsonApiDataContainer.channels?.Stable?.downloads?.chromedriver?
+                    .ToList().Where(i => (i.platform == "mac-x64")).First().url;
             }
             else
             {
                 throw new PlatformNotSupportedException("Your operating system is not supported.");
             }
-            string? targetPath = driverPath;
-            if (String.IsNullOrEmpty(targetPath))
+            if (String.IsNullOrEmpty(browserLink) || String.IsNullOrEmpty(driverLink))
             {
-                targetPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? "";
+                throw new PlatformNotSupportedException("Your operating system is not supported.");
             }
-            targetPath = Path.Combine(targetPath, driverName);
-            if (!forceDownload && File.Exists(targetPath))
+            InstallationInfo installationInfo = new()
             {
-                string? existingChromeDriverVersion = null;
-                string? error = null;
-                Process? process = null;
-                try
+                RealBrowserPath = Path.Combine(BrowserPath, Path.GetFileNameWithoutExtension(browserLink)),
+                RealDriverPath = Path.Combine(DriverPath, Path.GetFileNameWithoutExtension(driverLink))
+            };
+            string chromeVersion = GetChromeVersion(installationInfo.RealBrowserPath);
+            if (!downloadIt)
+            {
+                string chromeVersionStub = Regex.Replace(chromeVersion, @"\.[^.]*$", "");
+                string newVersionStub = Regex.Replace(newVersion ?? "", @"\.[^.]*$", "");
+                if (newVersionStub != chromeVersionStub)
                 {
-                    process = Process.Start(
-                        new ProcessStartInfo
-                        {
-                            FileName = targetPath,
-                            Arguments = "--version",
-                            UseShellExecute = false,
-                            CreateNoWindow = true,
-                            RedirectStandardOutput = true,
-                            RedirectStandardError = true,
-                        }
-                    );
-                    if (process != null)
-                    {
-                        existingChromeDriverVersion = await process.StandardOutput.ReadToEndAsync();
-                        error = await process.StandardError.ReadToEndAsync();
-                        process.WaitForExit();
-                    }
-                }
-                finally
-                {
-                    process?.Dispose();
-                }
-                // expected output is something like "ChromeDriver 88.0.4324.96 (68dba2d8a0b149a1d3afac56fa74648032bcf46b-refs/branch-heads/4324@{#1784})"
-                // the following line will extract the version number and leave the rest
-                existingChromeDriverVersion = existingChromeDriverVersion?.Split(' ')[1];
-                if (chromeDriverVersion == existingChromeDriverVersion)
-                {
-                    return;
-                }
-
-                if (!string.IsNullOrEmpty(error))
-                {
-                    throw new Exception($"Failed to execute {driverName} --version");
+                    downloadIt = true;
                 }
             }
 
-            //   Use the URL created in the last step to retrieve a small file containing the version of ChromeDriver to use. For example, the above URL will get your a file containing "72.0.3626.69". (The actual number may change in the future, of course.)
-            //   Use the version number retrieved from the previous step to construct the URL to download ChromeDriver. With version 72.0.3626.69, the URL would be "https://chromedriver.storage.googleapis.com/index.html?path=72.0.3626.69/".
-            var driverZipResponse = await httpClient.GetAsync($"{chromeDriverVersion}/{zipName}");
-            if (!driverZipResponse.IsSuccessStatusCode)
+            if (downloadIt)
             {
-                throw new Exception($"ChromeDriver download request failed with status code: {driverZipResponse.StatusCode}, reason phrase: {driverZipResponse.ReasonPhrase}");
-            }
+                if (Directory.Exists(DriverPath))
+                {
+                    this.killChromedriverZombies();
+                    Directory.Delete(DriverPath, true);
+                }
+                if (Directory.Exists(BrowserPath))
+                {
+                    Directory.Delete(BrowserPath, true);
+                }
+                Directory.CreateDirectory(DriverPath);
+                Directory.CreateDirectory(BrowserPath);
 
-            this.killChromedriverZombies();
+                await LoadChromeBrowserAndDriver(browserLink, driverLink);
 
-            // this reads the zipfile as a stream, opens the archive, 
-            // and extracts the chromedriver executable to the targetPath without saving any intermediate files to disk
-            using (var zipFileStream = await driverZipResponse.Content.ReadAsStreamAsync())
-            using (var zipArchive = new ZipArchive(zipFileStream, ZipArchiveMode.Read))
-            using (var chromeDriverWriter = new FileStream(targetPath, FileMode.Create))
-            {
-                ZipArchiveEntry? entry = zipArchive.GetEntry(driverName);
-                Stream? chromeDriverStream = null;
-                try
+                // on Linux/macOS, you need to add the executable permission (+x) to allow the execution of the chromedriver
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux) || RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
                 {
-                    chromeDriverStream = entry?.Open();
-                    if (chromeDriverStream != null)
-                    {
-                        await chromeDriverStream.CopyToAsync(chromeDriverWriter);
-                    }
-                }
-                finally
-                {
-                    chromeDriverStream?.Dispose();
-                }
-            }
-
-            // on Linux/macOS, you need to add the executable permission (+x) to allow the execution of the chromedriver
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux) || RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-            {
-                string? error = null;
-                Process? process = null;
-                try
-                {
-                    process = Process.Start(
-                        new ProcessStartInfo
-                        {
-                            FileName = "chmod",
-                            Arguments = String.Format($" +x {targetPath}"),
-                            UseShellExecute = false,
-                            CreateNoWindow = true,
-                            RedirectStandardOutput = true,
-                            RedirectStandardError = true,
-                        }
-                    );
-                    if (process != null)
-                    {
-                        error = await process.StandardError.ReadToEndAsync();
-                        process.WaitForExit();
-                    }
-                }
-                finally
-                {
-                    process?.Dispose();
-                }
-                if (!string.IsNullOrEmpty(error))
-                {
-                    throw new Exception("Failed to make chromedriver executable");
-                }
-            }
-        }
-
-        private static async Task<string?> GetLatestAppropriateChromeDriverVersion(string? chromeVersion)
-        {
-            // Append the result to URL "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_". 
-            // For example, with Chrome version 72.0.3626.81, you'd get a URL "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_72.0.3626".
-            var chromeDriverVersionResponse = await httpClient.GetAsync($"LATEST_RELEASE_{chromeVersion}");
-            if (!chromeDriverVersionResponse.IsSuccessStatusCode)
-            {
-                if (chromeDriverVersionResponse.StatusCode == HttpStatusCode.NotFound)
-                {
-                    // throw new Exception($"ChromeDriver version not found for Chrome version {chromeVersion}");
-                    return null;
-                }
-                else
-                {
-                    throw new Exception($"ChromeDriver version request failed with status code: {chromeDriverVersionResponse.StatusCode}, reason phrase: {chromeDriverVersionResponse.ReasonPhrase}");
-                }
-            }
-            var chromeDriverVersion = await chromeDriverVersionResponse.Content.ReadAsStringAsync();
-            return chromeDriverVersion;
-        }
-
-        /// <summary>
-        /// Holt die Version des aktuell installierten chrome-Browsers aus der Registry.
-        /// </summary>
-        /// <returns>Version der aktuell lokal installierten Treibers "chromedriver.exe".</returns>
-        public async Task<string?> GetChromeVersion()
-        {
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
-                string? chromePath
-                    = (string?)Registry.GetValue("HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\chrome.exe", null, null);
-                if (chromePath == null)
-                {
-                    throw new Exception("Google Chrome not found in registry");
-                }
-
-                FileVersionInfo? fileVersionInfo = FileVersionInfo.GetVersionInfo(chromePath);
-                return fileVersionInfo?.FileVersion;
-            }
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-            {
-                try
-                {
-                    string? output = null;
                     string? error = null;
                     Process? process = null;
                     try
@@ -317,8 +115,8 @@ namespace NetEti.WebTools
                         process = Process.Start(
                             new ProcessStartInfo
                             {
-                                FileName = "google-chrome",
-                                Arguments = "--product-version",
+                                FileName = "chmod",
+                                Arguments = String.Format($" +x {driverLink}"),
                                 UseShellExecute = false,
                                 CreateNoWindow = true,
                                 RedirectStandardOutput = true,
@@ -327,7 +125,6 @@ namespace NetEti.WebTools
                         );
                         if (process != null)
                         {
-                            output = await process.StandardOutput.ReadToEndAsync();
                             error = await process.StandardError.ReadToEndAsync();
                             process.WaitForExit();
                         }
@@ -338,63 +135,76 @@ namespace NetEti.WebTools
                     }
                     if (!string.IsNullOrEmpty(error))
                     {
-                        throw new Exception(error);
+                        throw new Exception("Failed to make chromedriver executable");
                     }
+                }
+            }
 
-                    return output;
-                }
-                catch (Exception ex)
-                {
-                    throw new Exception("An error occurred trying to execute 'google-chrome --product-version'", ex);
-                }
-            }
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            return installationInfo;
+        }
+
+        /// <summary>
+        /// Holt die Version des aktuell installierten chrome-Browsers aus dem BrowserPath.
+        /// </summary>
+        /// <param name="realBrowserPath">Path to the subdirectory with the standalone test-browser.</param>
+        /// <returns>Version des aktuell installierten chrome-Browsers aus dem BrowserPath.</returns>
+        public string GetChromeVersion(string realBrowserPath)
+        {
+            if (Directory.Exists(realBrowserPath))
             {
-                try
+                String? version = Directory.GetFiles(realBrowserPath, "*.manifest").FirstOrDefault();
+                if (!string.IsNullOrEmpty(version))
                 {
-                    string? output = null;
-                    string? error = null;
-                    Process? process = null;
-                    try
-                    {
-                        process = Process.Start(
-                            new ProcessStartInfo
-                            {
-                                FileName = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-                                Arguments = "--version",
-                                UseShellExecute = false,
-                                CreateNoWindow = true,
-                                RedirectStandardOutput = true,
-                                RedirectStandardError = true,
-                            }
-                        );
-                        if (process != null)
-                        {
-                            output = await process.StandardOutput.ReadToEndAsync();
-                            error = await process.StandardError.ReadToEndAsync();
-                            process.WaitForExit();
-                        }
-                    }
-                    finally
-                    {
-                        process?.Dispose();
-                    }
-                    if (!string.IsNullOrEmpty(error))
-                    {
-                        throw new Exception(error);
-                    }
-                    output = output?.Replace("Google Chrome ", "");
-                    return output;
-                }
-                catch (Exception ex)
-                {
-                    throw new Exception($"An error occurred trying to execute '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome --version'", ex);
+                    return Path.GetFileNameWithoutExtension(version.ToLower());
                 }
             }
-            else
+            return String.Empty;
+        }
+
+        private static async Task<ChromeForTestingJsonApiDataContainer?> FetchChromeDriverInfos()
+        {
+            Uri uri = new Uri(
+                @"https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions-with-downloads.json");
+
+            HttpClient client = new HttpClient();
+            client.Timeout = new TimeSpan(0, 0, 10);
+            HttpResponseMessage response;
+            string? responseJsonString = null;
+            ChromeForTestingJsonApiDataContainer? chromeForTestingJsonApiDataContainer = null;
+            try
             {
-                throw new PlatformNotSupportedException("Your operating system is not supported.");
+                response = await client.GetAsync(uri);
+                response.EnsureSuccessStatusCode();
+                responseJsonString = await response.Content.ReadAsStringAsync();
+                chromeForTestingJsonApiDataContainer
+                    = JsonConvert.DeserializeObject<ChromeForTestingJsonApiDataContainer>(responseJsonString);
             }
+            catch (HttpRequestException)
+            {
+                // Handle exception here
+                throw;
+                // return null;
+            }
+
+            return chromeForTestingJsonApiDataContainer;
+        }
+
+        private async Task<bool> LoadChromeBrowserAndDriver(
+            string browserLink, string driverLink)
+        {
+            return await HttpDownloadAndUnzip(browserLink, BrowserPath)
+                && await HttpDownloadAndUnzip(driverLink, DriverPath);
+        }
+
+        private async Task<bool> HttpDownloadAndUnzip(string requestUri, string directoryToUnzip)
+        {
+            using var response = await new HttpClient().GetAsync(requestUri);
+            if (!response.IsSuccessStatusCode) return false;
+
+            using var streamToReadFrom = await response.Content.ReadAsStreamAsync();
+            using var zip = new ZipArchive(streamToReadFrom);
+            zip.ExtractToDirectory(directoryToUnzip);
+            return true;
         }
 
         private void killChromedriverZombies()
@@ -415,33 +225,6 @@ namespace NetEti.WebTools
                 process?.Kill();
                 Thread.Sleep(500);
             }
-            /*
-            Process process2 = Process.Start(
-                new ProcessStartInfo
-                {
-                    FileName = "taskkill",
-                    Arguments = "/F /IM chrome.exe /T",
-                    UseShellExecute = false,
-                    CreateNoWindow = true,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                }
-            );
-            */
-            /*
-            Process process3 = Process.Start(
-                new ProcessStartInfo
-                {
-                    FileName = "taskkill",
-                    Arguments = "/F /IM conhost.exe /T",
-                    UseShellExecute = false,
-                    CreateNoWindow = true,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                }
-            );
-            */
         }
-
     }
 }

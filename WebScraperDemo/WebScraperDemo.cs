@@ -200,7 +200,7 @@ namespace Vishnu_UserModules
 
         private void LogJohnsHopkins()
         {
-            using (ChromeScraper chromeScraper = new ChromeScraper(JohnsHopkinsUrl, this._driverPath, new ChromeOptions()))
+            using (ChromeScraper chromeScraper = new ChromeScraper(JohnsHopkinsUrl, 10, new ChromeOptions()))
             {
                 this.Publish("LogJohnsHopkins() Start");
 

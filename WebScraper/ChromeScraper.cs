@@ -20,53 +20,36 @@ namespace NetEti.WebTools
     ///
     /// 28.11.2020 Erik Nagel: created.
     /// 28.08.2022 Erik Nagel: revised for selenium 4.
+    /// 21.08.2023 Erik Nagel: revised for "Chrome for Testing".
     /// 
     /// </remarks>
     public class ChromeScraper: WebScraperBase
     {
         /// <summary>
-        /// Constructor - takes a website url and starts the WebDriver at the current directory.
-        /// </summary>
-        /// <param name="url">The complete website url including https, etc.</param>
-        /// <param name="chromeOptions">Specific ChromeOptions or null (default: null).</param>
-        /// <param name="quiet">True (default): no browser-window will be opened and no messages issued.</param>
-        public ChromeScraper(string? url, ChromeOptions? chromeOptions=null, bool quiet=true)
-            : this(url, Directory.GetCurrentDirectory(), chromeOptions, quiet) { }
-
-        /// <summary>
         /// Constructor - takes a website url and starts the WebDriver at the given driverPath.
         /// </summary>
         /// <param name="url">The complete website url including https, etc.</param>
-        /// <param name="driverPath">Webdriver's containing directory.</param>
-        /// <param name="chromeOptions">Specific ChromeOptions or null (default: null).</param>
-        /// <param name="quiet">True (default): no browser-window will be opened and no messages issued.</param>
-        public ChromeScraper(string? url, string? driverPath, ChromeOptions? chromeOptions=null, bool quiet=true)
-            : base(url, driverPath, (DriverOptions?)chromeOptions, quiet) { }
-
-        /// <summary>
-        /// Constructor - takes a website url and starts the WebDriver at the given driverPath.
-        /// </summary>
-        /// <param name="url">The complete website url including https, etc.</param>
-        /// <param name="driverPath">Webdriver's containing directory.</param>
         /// <param name="pageLoadTimeoutSeconds">Webdriver page-load-timeout, default = 10 (seconds).</param>
         /// <param name="chromeOptions">Specific ChromeOptions or null (default: null).</param>
         /// <param name="quiet">True (default): no browser-window will be opened and no messages issued.</param>
-        public ChromeScraper(string? url, string driverPath, int pageLoadTimeoutSeconds, ChromeOptions? chromeOptions=null,  bool quiet=true)
-            : base(url, driverPath, pageLoadTimeoutSeconds, (DriverOptions?)chromeOptions, quiet) { }
+        public ChromeScraper(string? url, int pageLoadTimeoutSeconds, ChromeOptions? chromeOptions=null,  bool quiet=true)
+            : base(url, pageLoadTimeoutSeconds, (DriverOptions?)chromeOptions, quiet) { }
 
         /// <summary>
         /// Instantiates the concrete Driver (chromedriver.exe here).
         /// </summary>
-        /// <param name="driverPath">Webdriver's containing directory.</param>
         /// <param name="options">Specific DriverOptions or null (default: null).</param>
-        protected override async Task SetupDriverInstance(string? driverPath, DriverOptions? options)
+        protected override async Task<InstallationInfo?> SetupDriverInstance(DriverOptions? options)
         {
-            await InstallChromeDriver(driverPath);
+            InstallationInfo installationInfo = await InstallChromeDriver()
+                ?? throw new ApplicationException("A valid chrome-driver could not be found nor imstalled.");
 
-            ChromeDriverService service = ChromeDriverService.CreateDefaultService(driverPath);
+            ChromeDriverService service = ChromeDriverService.CreateDefaultService(
+                Path.Combine(installationInfo.RealDriverPath ?? "", "chromedriver.exe"));
             service.SuppressInitialDiagnosticInformation = true;
             service.HideCommandPromptWindow = true;
             ChromeOptions chromeOptions = (ChromeOptions?)options ?? new ChromeOptions();
+            chromeOptions.BinaryLocation = Path.Combine(installationInfo.RealBrowserPath ?? "", "chrome.exe");
             if (this.Quiet)
             {
                 chromeOptions.AddArguments(new List<string>() {
@@ -80,6 +63,7 @@ namespace NetEti.WebTools
             });
             }
             this.WebDriver = new ChromeDriver(service, chromeOptions);
+            return installationInfo;
         }
 
         /// <summary>
@@ -104,16 +88,16 @@ namespace NetEti.WebTools
             this.Load(uri);
         }
 
-        private static bool _isChromeDriverInstalled = false;
-
-        private static async Task InstallChromeDriver(string? workingDirectory = null)
+        private static async Task<InstallationInfo?> InstallChromeDriver()
         {
             // Theoretically obsolet since Selenium.WebDriver 4.6.0.
             // But during the implicite call of the new selenium-manager.exe a
-            // short flicker of a console window appears.
-            // Therefore the existing implementation is retained.
-            // Because google didn't issue a downloadble driver for chrome 115 (see following log-extracts),
-            // ChromeDriverInstaller had to be extended anywhere (see ChromeDriverInstaller for details).
+            // short flicker of a console window appears. At all Selenium doesn't seem to have made
+            // any effords to realize the new "Chrome for Testing"-Environment.
+            // Therefore this logic has been implemented.
+            // Because google didn't issue a downloadble driver for chrome 115 at the usual old place
+            // (see following log-extracts), ChromeDriverInstaller had to be revised anyway
+            // (see ChromeDriverInstaller for details).
             // Log:
             //     selenium-manager.exe --browser chrome --clear-cache --clear-metadata --trace
             //     ...
@@ -129,28 +113,14 @@ namespace NetEti.WebTools
             //     TRACE   Downloading https://chromedriver.storage.googleapis.com/114.0.5735.90/chromedriver_win32.zip to temporal folder "C:\\Users\\micro\\AppData\\Local\\Temp\\selenium-managerO9hQVc"
             //     ...
             //     INFO    C:\Users\micro\.cache\selenium\chromedriver\win32\114.0.5735.90\chromedriver.exe
-            
-            if (_isChromeDriverInstalled)
-            {
-                return;
-            }
-
-            if (String.IsNullOrEmpty(workingDirectory))
-            {
-                workingDirectory = Directory.GetCurrentDirectory();
-            }
 
             ChromeDriverInstaller chromeDriverInstaller = new ChromeDriverInstaller();
 
-            // not necessary, but added for logging purposes
-            var chromeVersion = await chromeDriverInstaller.GetChromeVersion();
-            // Console.WriteLine($"Chrome version {chromeVersion} detected");
-
-            await chromeDriverInstaller.Install(chromeVersion, workingDirectory);
-            // Console.WriteLine("ChromeDriver installed");
-            _isChromeDriverInstalled = true;
+            InstallationInfo? installationInfo = await chromeDriverInstaller.Install(false);
             
-            // await Task.Run(() => { Task.Delay(1); }); // just to suppress "no await"-warning.
+            await Task.Run(() => { Task.Delay(1); }); // just to suppress "no await"-warning.
+
+            return installationInfo;
         }
 
     }
