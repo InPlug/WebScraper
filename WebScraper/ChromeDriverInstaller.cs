@@ -5,6 +5,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Net.Http;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -21,8 +22,8 @@ namespace NetEti.WebTools
     /// </summary>
     public class ChromeDriverInstaller
     {
-        const string BrowserPath = "browser";
-        const string DriverPath = "driver";
+        const string BrowserDir = "browser";
+        const string DriverDir = "driver";
 
         /// <summary>
         /// Prüft die aktuell installierte chrome-Browser-Version und holt den dazu passenden
@@ -75,8 +76,12 @@ namespace NetEti.WebTools
             }
             InstallationInfo installationInfo = new()
             {
-                RealBrowserPath = Path.Combine(BrowserPath, Path.GetFileNameWithoutExtension(browserLink)),
-                RealDriverPath = Path.Combine(DriverPath, Path.GetFileNameWithoutExtension(driverLink))
+                RealBrowserPath
+                    = Path.Combine(Path.GetDirectoryName(Assembly.GetEntryAssembly()?.Location) ?? "",
+                                   BrowserDir, Path.GetFileNameWithoutExtension(browserLink)),
+                RealDriverPath
+                    = Path.Combine(Path.GetDirectoryName(Assembly.GetEntryAssembly()?.Location) ?? "",
+                                   DriverDir, Path.GetFileNameWithoutExtension(driverLink))
             };
             string chromeVersion = GetChromeVersion(installationInfo.RealBrowserPath);
             if (!downloadIt)
@@ -91,17 +96,17 @@ namespace NetEti.WebTools
 
             if (downloadIt)
             {
-                if (Directory.Exists(DriverPath))
+                if (Directory.Exists(DriverDir))
                 {
                     this.killChromedriverZombies();
-                    Directory.Delete(DriverPath, true);
+                    Directory.Delete(DriverDir, true);
                 }
-                if (Directory.Exists(BrowserPath))
+                if (Directory.Exists(BrowserDir))
                 {
-                    Directory.Delete(BrowserPath, true);
+                    Directory.Delete(BrowserDir, true);
                 }
-                Directory.CreateDirectory(DriverPath);
-                Directory.CreateDirectory(BrowserPath);
+                Directory.CreateDirectory(DriverDir);
+                Directory.CreateDirectory(BrowserDir);
 
                 await LoadChromeBrowserAndDriver(browserLink, driverLink);
 
@@ -192,8 +197,8 @@ namespace NetEti.WebTools
         private async Task<bool> LoadChromeBrowserAndDriver(
             string browserLink, string driverLink)
         {
-            return await HttpDownloadAndUnzip(browserLink, BrowserPath)
-                && await HttpDownloadAndUnzip(driverLink, DriverPath);
+            return await HttpDownloadAndUnzip(browserLink, BrowserDir)
+                && await HttpDownloadAndUnzip(driverLink, DriverDir);
         }
 
         private async Task<bool> HttpDownloadAndUnzip(string requestUri, string directoryToUnzip)
