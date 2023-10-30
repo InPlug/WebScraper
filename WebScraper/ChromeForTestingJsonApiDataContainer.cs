@@ -26,7 +26,7 @@ namespace NetEti.WebTools
         public class Channels
         {
             /// <summary>
-            /// The last stable build (recommendet).
+            /// The last stable build (recommended).
             /// </summary>
             public Stable? Stable { get; set; }
 

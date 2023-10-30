@@ -44,7 +44,7 @@ namespace NetEti.WebTools
     }
 
     /// <summary>
-    /// Base Class for WebScapers like ChromeScraper or others.
+    /// Base Class for WebScrapers like ChromeScraper or others.
     /// </summary>
     /// <remarks>
     /// Author: Erik Nagel
@@ -113,7 +113,7 @@ namespace NetEti.WebTools
             installTask.Wait();
             if (this.WebDriver != null)
             {
-                this.WebDriver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(0); // no implicite waiting
+                this.WebDriver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(0); // no implicit waiting
             }
         }
 
@@ -146,11 +146,11 @@ namespace NetEti.WebTools
         }
 
         /// <summary>
-        /// Waits under a given condition for a web-page-element  for a given time and returns it, if sucessful.
+        /// Waits under a given condition for a web-page-element  for a given time and returns it, if successful.
         /// </summary>
         /// <param name="waitCondition">A function, that describes, under which circumstances a result is accepted.</param>
         /// <param name="maxWaitTime">Maximum time to wait, otherwise an exception is thrown.</param>
-        /// <returns>IWebElement if succesful.</returns>
+        /// <returns>IWebElement if successful.</returns>
         public IWebElement GetElement(Func<IWebDriver, IWebElement> waitCondition, TimeSpan maxWaitTime)
         {
             IWebElement? webElement = null;
