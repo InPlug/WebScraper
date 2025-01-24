@@ -9,7 +9,7 @@ namespace WebScraperDemo
         static void Main(string[] args)
         {
             TreeEvent treeEvent = TreeEvent.UndefinedTreeEvent;
-            CheckCovid19 demoChecker = new CheckCovid19();
+            WebScraperDemoChecker demoChecker = new WebScraperDemoChecker();
             demoChecker.NodeProgressChanged += SubNodeProgressChanged;
             bool? logicalResult = demoChecker.Run(@"Covid19_Archive.txt|holt Covid-19 Zahlen von Johns Hopkins",
                 new TreeParameters("MainTree", null) { CheckerDllDirectory = Directory.GetCurrentDirectory() }, treeEvent);

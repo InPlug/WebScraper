@@ -118,7 +118,7 @@ namespace NetEti.WebTools
         }
 
         /// <summary>
-        /// Loads a web-page from an uri.
+        /// Loads a web-page from a url.
         /// </summary>
         /// <param name="uri">The website address (uri/url).</param>
         public void Load(Uri uri)

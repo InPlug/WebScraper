@@ -1,7 +1,6 @@
 ﻿using NetEti.ApplicationControl;
 using NetEti.WebTools;
 using OpenQA.Selenium;
-using OpenQA.Selenium.Chrome;
 using SeleniumExtras.WaitHelpers;
 using System.ComponentModel;
 using System.Text.RegularExpressions;
@@ -11,8 +10,8 @@ namespace Vishnu_UserModules
 {
     /// <summary>
     /// DemoChecker-Projekt für Vishnu.
-    /// Die CheckCovid19.dll kann später in einer Vishnu-JobDescription.xml referenziert werden
-    /// und von Vishnu bei der Ausführung des Jobs aus dem Plugin-Unterverzeichnis oder
+    /// Die WebScraperDemoChecker.dll kann später in einer Vishnu-JobDescription.xml referenziert
+    /// werden und von Vishnu bei der Ausführung des Jobs aus dem Plugin-Unterverzeichnis oder
     /// einem konfigurierten UserAssemblyDirectory dynamisch geladen werden.
     /// Vishnu ruft dann je nach weiteren Konfigurationen (Trigger) die öffentliche
     /// Methode "Run" des UserCheckers auf.
@@ -21,8 +20,9 @@ namespace Vishnu_UserModules
     /// Autor: Erik Nagel
     ///
     /// 30.01.2020 Erik Nagel: erstellt
+    /// 24.01.2025 Erik Nagel: überarbeitet.
     /// </remarks>
-    public class CheckCovid19 : INodeChecker, IDisposable
+    public class WebScraperDemoChecker : INodeChecker, IDisposable
     {
         /// <summary>
         /// Maximal waiting time for a searched web-element in seconds.
@@ -31,7 +31,7 @@ namespace Vishnu_UserModules
 
         #region INodeChecker Implementation
 
-        const string JohnsHopkinsUrl = "https://coronavirus.jhu.edu/map.html";
+        const string WebScraperDemoUrl = "https://coronavirus.jhu.edu/map.html";
 
         /// <summary>
         /// Kann aufgerufen werden, wenn sich der Verarbeitungs-Fortschritt
@@ -86,7 +86,7 @@ namespace Vishnu_UserModules
         /// <summary>
         /// Constructor - fetches the InfoController for Loggings.
         /// </summary>
-        public CheckCovid19()
+        public WebScraperDemoChecker()
         {
             this._publisher = InfoController.GetInfoController();
             // Globales Logging installieren
@@ -119,7 +119,7 @@ namespace Vishnu_UserModules
                 if (disposing)
                 {
                     // Aufräumarbeiten durchführen und dann beenden.
-                    this._covidLogger?.Dispose();
+                    this._webScraperDemo_Logger?.Dispose();
                     this._logger?.Dispose();
                 }
                 this._disposed = true;
@@ -129,7 +129,7 @@ namespace Vishnu_UserModules
         /// <summary>
         /// Finalizer: wird vom GarbageCollector aufgerufen.
         /// </summary>
-        ~CheckCovid19()
+        ~WebScraperDemoChecker()
         {
             this.Dispose(false);
         }
@@ -138,11 +138,11 @@ namespace Vishnu_UserModules
 
         private IInfoController? _publisher;
         private string? _driverPath;
-        private Logger? _covidLogger;
+        private Logger? _webScraperDemo_Logger;
         private string? _paraString;
         private object? _returnObject = null;
-        private WebScraperDemo_ReturnObject? _checkCovid19_ReturnObject;
-        private string? _covid19InfoFile;
+        private WebScraperDemoChecker_ReturnObject? _webScraperDemoChecker_ReturnObject;
+        private string? _webScraperDemo_InfoFile;
         private Logger? _logger;
 
         private bool? Work(TreeEvent source)
@@ -152,55 +152,147 @@ namespace Vishnu_UserModules
             // Die Rückgabe kann völlig unabhängig von Results oder Environment sein; ist hier nur für
             // die Demo abhängig kodiert.
             // TODO: hier können Sie Ihre eigene Verarbeitung implementieren.
-            this.ReturnObject = null;
-            bool? rtn = true;
-            List<string> records = new List<string>();
+            this.OnNodeProgressChanged(30);
+            string url = "https://www.tagesschau.de/wirtschaft/boersenkurse/basf-aktie-basf11/";
+            this.ReturnObject = new ShareChecker_ReturnObject()
+            {
+                FullName = "BASF SE NAMENS-AKTIEN O.N. ISIN DE000BASF111 | WKN BASF11",
+                ShortName = "BASF",
+                Url = url,
+                StartCount = 100.00m,
+                StartValue = 91.00m,
+                CurrentCount = 100.00m,
+                Compensation = 1000.00m,
+                Timestamp = DateTime.Now
+            };
             try
             {
-                this.LogWebsites();
-                string? line;
-                if (File.Exists(this._covid19InfoFile))
-                {
-                    using (System.IO.StreamReader file = new System.IO.StreamReader(this._covid19InfoFile))
-                    {
-                        while ((line = file.ReadLine()) != null)
-                        {
-                            records.Insert(0, line);
-                        }
-                        file.Close();
-                    }
-                }
-
+                return this.EvaluateShareSite(url);
             }
             catch (Exception ex)
             {
-                this.Publish("#CheckCovid19#: Exception: " + ex.Message);
+                InfoController.Say("BASF Exception: " + ex.Message);
                 throw;
             }
-            if (this._checkCovid19_ReturnObject != null)
+            finally
             {
-                this._checkCovid19_ReturnObject.RecordCount = records.Count;
-                this._checkCovid19_ReturnObject.SubResults?.SubResults?.Clear();
-                if (!this.recordsToResult(records))
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+                // InfoController.Say("BASF_Checker: Ende");
+            }
+        }
+
+        private bool? EvaluateShareSite(string url)
+        {
+            bool? rtn = null;
+            using (ChromeScraper chromeScraper = new ChromeScraper(url, 10))
+            {
+                // InfoController.Say("BASF_Checker: Start");
+                this.OnNodeProgressChanged(70);
+
+                decimal currentValue;
+
+                By by2 = By.XPath("//div[@class='VWDcomp WE021']//span[@class='price']");
+
+                IWebElement? stableGermanyCasesElement = null;
+                try
                 {
-                    rtn = false;
+                    stableGermanyCasesElement = chromeScraper.GetElement(ExpectedConditions.ElementIsVisible(by2), new TimeSpan(0, 0, DEFAULT_SEARCH_TIMEOUT_SECONDS));
                 }
-                this._checkCovid19_ReturnObject.LogicalResult = rtn;
-                this._returnObject = this._checkCovid19_ReturnObject;
+                catch (Exception ex) when (ex is NoSuchElementException || ex is WebDriverTimeoutException)
+                {
+                    this.Publish($"Exception occurred in SeleniumHelper.SendKeys(): element located by {by2.ToString()} could not be located within {DEFAULT_SEARCH_TIMEOUT_SECONDS} seconds.");
+                }
+
+                string? tmpString1
+                    = stableGermanyCasesElement?.Text.Replace(Environment.NewLine, "|").Replace("€", "").Trim() + "|";
+                // InfoController.Say(tmpString1);
+
+                this.OnNodeProgressChanged(80);
+
+                string numString1 = new Regex(@"(.*)\|.*", RegexOptions.IgnoreCase)
+                    .Matches(tmpString1)[0].Groups[1].Value;
+
+                if (decimal.TryParse(numString1.Replace(".", ""), out currentValue))
+                {
+                    ShareChecker_ReturnObject? shareChecker_ReturnObject = (ShareChecker_ReturnObject?)this.ReturnObject;
+                    if (shareChecker_ReturnObject != null)
+                    {
+                        shareChecker_ReturnObject.CurrentValue = currentValue;
+                        shareChecker_ReturnObject.GainsLosses
+                            = currentValue * shareChecker_ReturnObject.CurrentCount
+                                - shareChecker_ReturnObject.StartValue
+                                * shareChecker_ReturnObject.StartCount
+                                + shareChecker_ReturnObject.Compensation;
+                        rtn = shareChecker_ReturnObject.GainsLosses >= 0;
+                    }
+                }
+                else
+                {
+                    throw new ApplicationException("BASF_Checker: der aktuelle Kurs konnte nicht ermittelt werden.");
+                }
+                this.OnNodeProgressChanged(90);
             }
             return rtn;
         }
 
-        private void LogWebsites()
+        private void evaluateParameters(string? paraString)
         {
-            this.LogJohnsHopkins();
-            this.OnNodeProgressChanged(85);
-            this._covidLogger?.Flush();
+            if (String.IsNullOrEmpty(paraString))
+            {
+                return; 
+            }
+            string[] para = paraString.Split('|');
+            string covid19InfoFile = String.IsNullOrEmpty(para[0].Trim()) ? @"DemoChecker_Archive.txt" : para[0].Trim();
+            if (!String.IsNullOrEmpty(covid19InfoFile) && covid19InfoFile != this._webScraperDemo_InfoFile)
+            {
+                this._webScraperDemo_InfoFile = covid19InfoFile;
+            }
+            string comment = para.Length > 1 ? para[1].Trim() : "";
+
+            this._webScraperDemoChecker_ReturnObject = new WebScraperDemoChecker_ReturnObject()
+            {
+                Covid19InfoFile = this._webScraperDemo_InfoFile,
+                Comment = comment
+            };
         }
 
-        private void LogJohnsHopkins()
+        private void SetupCovidLogging()
         {
-            using (ChromeScraper chromeScraper = new ChromeScraper(JohnsHopkinsUrl, 10, new ChromeOptions()))
+            this._webScraperDemo_Logger?.Dispose();
+            string loggingRegexFilter = ""; // Alles wird geloggt (ist der Default).
+                                            //string loggingRegexFilter = @"(?:_NOPPES_)"; // Nichts wird geloggt, bzw. nur Zeilen, die "_NOPPES_" enthalten.
+            if (!String.IsNullOrEmpty(this._webScraperDemo_InfoFile))
+            {
+                this._webScraperDemo_Logger = new Logger(this._webScraperDemo_InfoFile, loggingRegexFilter, false);
+                InfoType[] loggerInfos = new InfoType[] { InfoType.Milestone };
+                this._publisher?.RegisterInfoReceiver(this._webScraperDemo_Logger, loggerInfos);
+            }
+        }
+
+        private void OnNodeProgressChanged(int progressPercentage)
+        {
+            NodeProgressChanged?.Invoke(null, new ProgressChangedEventArgs(progressPercentage, null));
+        }
+
+        private void Publish(string? message)
+        {
+            Console.WriteLine(message);
+            // InfoController.Say("DemoChecker " + message);
+        }
+
+        /*
+        // Deaktiviert, da die Johns Hopkins-Seite in dieser Form nicht mehr existiert.
+        private void LogWebsites()
+        {
+            this.LogWebsite();
+            this.OnNodeProgressChanged(85);
+            this._webScraperDemo_Logger?.Flush();
+        }
+
+        private void LogWebsite()
+        {
+            using (ChromeScraper chromeScraper = new ChromeScraper(WebScraperDemoUrl, 10, new ChromeOptions()))
             {
                 this.Publish("LogJohnsHopkins() Start");
 
@@ -209,11 +301,11 @@ namespace Vishnu_UserModules
                 IWebElement? stableInnerFrame = null;
                 try
                 {
-                    stableInnerFrame = chromeScraper.GetElement(ExpectedConditions.ElementIsVisible(by1), new TimeSpan(0, 0, CheckCovid19.DEFAULT_SEARCH_TIMEOUT_SECONDS));
+                    stableInnerFrame = chromeScraper.GetElement(ExpectedConditions.ElementIsVisible(by1), new TimeSpan(0, 0, WebScraperDemoChecker.DEFAULT_SEARCH_TIMEOUT_SECONDS));
                 }
                 catch (Exception ex) when (ex is NoSuchElementException || ex is WebDriverTimeoutException)
                 {
-                    this.Publish($"Exception occurred in SeleniumHelper.SendKeys(): element located by {by1.ToString()} could not be located within {CheckCovid19.DEFAULT_SEARCH_TIMEOUT_SECONDS} seconds.");
+                    this.Publish($"Exception occurred in SeleniumHelper.SendKeys(): element located by {by1.ToString()} could not be located within {WebScraperDemoChecker.DEFAULT_SEARCH_TIMEOUT_SECONDS} seconds.");
                 }
 
                 // "Coronavirus COVID-19 Global Cases by Johns Hopkins CSSE"
@@ -230,11 +322,11 @@ namespace Vishnu_UserModules
                 IWebElement? stableGermanyElement = null;
                 try
                 {
-                    stableGermanyElement = chromeScraper.GetElement(ExpectedConditions.ElementIsVisible(by2), new TimeSpan(0, 0, CheckCovid19.DEFAULT_SEARCH_TIMEOUT_SECONDS));
+                    stableGermanyElement = chromeScraper.GetElement(ExpectedConditions.ElementIsVisible(by2), new TimeSpan(0, 0, WebScraperDemoChecker.DEFAULT_SEARCH_TIMEOUT_SECONDS));
                 }
                 catch (Exception ex) when (ex is NoSuchElementException || ex is WebDriverTimeoutException)
                 {
-                    this.Publish($"Exception occurred in SeleniumHelper.SendKeys(): element located by {by2.ToString()} could not be located within {CheckCovid19.DEFAULT_SEARCH_TIMEOUT_SECONDS} seconds.");
+                    this.Publish($"Exception occurred in SeleniumHelper.SendKeys(): element located by {by2.ToString()} could not be located within {WebScraperDemoChecker.DEFAULT_SEARCH_TIMEOUT_SECONDS} seconds.");
                 }
 
                 this.Publish(stableGermanyElement?.TagName + " vor Click()");
@@ -288,45 +380,6 @@ namespace Vishnu_UserModules
             }
         }
 
-        private void evaluateParameters(string? paraString)
-        {
-            if (String.IsNullOrEmpty(paraString))
-            {
-                return; 
-            }
-            string[] para = paraString.Split('|');
-            string covid19InfoFile = String.IsNullOrEmpty(para[0].Trim()) ? @"Covid19_Archive.txt" : para[0].Trim();
-            if (!String.IsNullOrEmpty(covid19InfoFile) && covid19InfoFile != this._covid19InfoFile)
-            {
-                this._covid19InfoFile = covid19InfoFile;
-            }
-            string comment = para.Length > 1 ? para[1].Trim() : "";
-
-            this._checkCovid19_ReturnObject = new WebScraperDemo_ReturnObject()
-            {
-                Covid19InfoFile = this._covid19InfoFile,
-                Comment = comment
-            };
-        }
-
-        private void SetupCovidLogging()
-        {
-            this._covidLogger?.Dispose();
-            string loggingRegexFilter = ""; // Alles wird geloggt (ist der Default).
-                                            //string loggingRegexFilter = @"(?:_NOPPES_)"; // Nichts wird geloggt, bzw. nur Zeilen, die "_NOPPES_" enthalten.
-            if (!String.IsNullOrEmpty(this._covid19InfoFile))
-            {
-                this._covidLogger = new Logger(this._covid19InfoFile, loggingRegexFilter, false);
-                InfoType[] loggerInfos = new InfoType[] { InfoType.Milestone };
-                this._publisher?.RegisterInfoReceiver(this._covidLogger, loggerInfos);
-            }
-        }
-
-        private void OnNodeProgressChanged(int progressPercentage)
-        {
-            NodeProgressChanged?.Invoke(null, new ProgressChangedEventArgs(progressPercentage, null));
-        }
-
         private bool recordsToResult(List<string> records)
         {
             bool rtn = true;
@@ -340,7 +393,7 @@ namespace Vishnu_UserModules
                 foreach (string record in records)
                 {
                     bool recordRtn = true;
-                    this._checkCovid19_ReturnObject?.SubResults?.SubResults?.Add(new WebScraperDemo_ReturnObject.SubResult()
+                    this._webScraperDemoChecker_ReturnObject?.SubResults?.SubResults?.Add(new WebScraperDemoChecker_ReturnObject.SubResult()
                     {
                         LogicalResult = recordRtn,
                         ResultRecord = record
@@ -354,12 +407,6 @@ namespace Vishnu_UserModules
             return rtn;
         }
 
-        private void Publish(string? message)
-        {
-            Console.WriteLine(message);
-            // InfoController.Say("CheckCovid19 " + message);
-        }
-
         private void LogCovidData(string message)
         {
             this._publisher?.Publish(this, "CheckCovid19 " + message, InfoType.Milestone);
@@ -370,11 +417,13 @@ namespace Vishnu_UserModules
             return (
                 errorMessage
                 + Environment.NewLine
-                + "Parameter: Pfad zur Datei mit den Covid19-Infos|Beschreibung"
+                + "Parameter: Pfad zur Datei mit den DemoChecker-Infos|Beschreibung"
                 + Environment.NewLine
-                + @"Beispiel: Covid19_Archive.txt|Holt Johns Hopkins-Zahlen für Deutschland."
+                + @"Beispiel: DemoChecker_Archive.txt|Holt Johns Hopkins-Zahlen für Deutschland."
              );
         }
+
+        */
 
     }
 }

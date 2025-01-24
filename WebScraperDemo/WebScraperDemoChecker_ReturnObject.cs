@@ -12,7 +12,7 @@ namespace Vishnu_UserModules
     /// 27.11.2020 Erik Nagel: erstellt
     /// </remarks>
     [DataContract] //[Serializable()]
-    public class WebScraperDemo_ReturnObject
+    public class WebScraperDemoChecker_ReturnObject
     {
         /// <summary>
         /// Wrapper-Klasse um List&lt;SubResult&gt; SubResults.
@@ -240,7 +240,7 @@ namespace Vishnu_UserModules
         /// <summary>
         /// Standard Konstruktor.
         /// </summary>
-        public WebScraperDemo_ReturnObject()
+        public WebScraperDemoChecker_ReturnObject()
         {
             this.SubResults = new SubResultListContainer();
             this.LogicalResult = null;
@@ -251,7 +251,7 @@ namespace Vishnu_UserModules
         /// </summary>
         /// <param name="info">Property-Container.</param>
         /// <param name="context">Übertragungs-Kontext.</param>
-        protected WebScraperDemo_ReturnObject(SerializationInfo info, StreamingContext context)
+        protected WebScraperDemoChecker_ReturnObject(SerializationInfo info, StreamingContext context)
         {
             this.SubResults = (SubResultListContainer?)info.GetValue("SubResults", typeof(SubResultListContainer));
             this.LogicalResult = (bool?)info.GetValue("LogicalResult", typeof(bool?));
