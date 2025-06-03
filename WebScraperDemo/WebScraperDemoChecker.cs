@@ -153,7 +153,8 @@ namespace Vishnu_UserModules
             // die Demo abhängig kodiert.
             // TODO: hier können Sie Ihre eigene Verarbeitung implementieren.
             this.OnNodeProgressChanged(30);
-            string url = "https://www.tagesschau.de/wirtschaft/boersenkurse/basf-aktie-basf11/";
+            // string url = "https://www.tagesschau.de/wirtschaft/boersenkurse/basf-aktie-basf11/";
+            string url = "https://www.tagesschau.de/wirtschaft/boersenkurse/de000basf111-204422817/";
             this.ReturnObject = new ShareChecker_ReturnObject()
             {
                 FullName = "BASF SE NAMENS-AKTIEN O.N. ISIN DE000BASF111 | WKN BASF11",

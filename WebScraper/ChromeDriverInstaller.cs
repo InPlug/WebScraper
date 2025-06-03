@@ -19,6 +19,7 @@ namespace NetEti.WebTools
     /// 
     /// 21.08.2023 Erik Nagel: created.
     /// 21.08.2023 Erik Nagel: revised for "Chrome for Testing".
+    /// 01.06.2025 Erik Nagel: Timeout for Downloading Chromedriver increased (3 minutes).
     /// </summary>
     public class ChromeDriverInstaller
     {
@@ -203,7 +204,7 @@ namespace NetEti.WebTools
 
         private async Task<bool> HttpDownloadAndUnzip(string requestUri, string directoryToUnzip)
         {
-            using var response = await new HttpClient().GetAsync(requestUri);
+            using var response = await new HttpClient() { Timeout = TimeSpan.FromSeconds(180) }.GetAsync(requestUri);
             if (!response.IsSuccessStatusCode) return false;
 
             using var streamToReadFrom = await response.Content.ReadAsStreamAsync();
